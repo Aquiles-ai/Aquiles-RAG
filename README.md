@@ -1,4 +1,4 @@
-## Aquiles-RAG
+# Aquiles-RAG
 
 ### Description
 Aquiles-RAG is a high-performance Retrieval-Augmented Generation (RAG) solution built on Redis. It offers a high-level interface through FastAPI REST APIs to:
