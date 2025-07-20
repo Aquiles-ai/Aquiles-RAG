@@ -5,7 +5,7 @@ import json
 data_dir = user_data_dir("aquiles", "AquilesRAG")
 os.makedirs(data_dir, exist_ok=True)
 
-AQUILES_CONFIG = os.path.join(data_dir, "redis_cofig.json")
+AQUILES_CONFIG = os.path.join(data_dir, "aquiles_cofig.json")
 
 def load_aquiles_config():
     if os.path.exists(AQUILES_CONFIG):

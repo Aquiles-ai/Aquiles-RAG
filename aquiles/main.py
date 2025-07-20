@@ -11,6 +11,9 @@ app = FastAPI()
 
 class SendRAG(BaseModel):
     index: str
+    name: str
+    chunk_id: int = 1
+    chunk_size: int = 1024
     raw_text: str
     embeddings: List[float]
 
