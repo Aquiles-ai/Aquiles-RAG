@@ -41,6 +41,7 @@
                         'float': 'float 6s ease-in-out infinite',
                         'glow': 'glow 2s ease-in-out infinite alternate',
                         'fade-in': 'fadeIn 1s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
                     },
                     keyframes: {
                         float: {
@@ -54,6 +55,10 @@
                         fadeIn: {
                             '0%': { opacity: '0' },
                             '100%': { opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
                         }
                     }
                 }
@@ -61,7 +66,7 @@
         }
     </script>
 </head>
-<body class="bg-cream-50 text-gray-900 min-h-screen overflow-x-hidden font-inter">
+<body class="bg-cream-50 text-gray-900 min-h-screen overflow-x-hidden font-inter flex flex-col">
     <!-- Background Effects -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none">
         <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float"></div>
@@ -69,8 +74,119 @@
         <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-5 animate-float" style="animation-delay: 4s;"></div>
     </div>
 
+    <!-- Settings Button (Top Right) -->
+    <div class="fixed top-6 right-6 z-50">
+        <button onclick="toggleConfig()" class="group relative inline-flex items-center justify-center w-12 h-12 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-lg transition-all duration-300 animate-glow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="text-purple-600 group-hover:text-purple-700" viewBox="0 0 16 16">
+                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
+                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Configuration Panel -->
+    <div id="configPanel" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slide-down">
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent font-lora">
+                            Redis Configuration
+                        </h2>
+                        <button onclick="toggleConfig()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Status Message -->
+                    <div id="statusMessage" class="hidden mb-4 p-4 rounded-xl"></div>
+
+                    <!-- Configuration Form -->
+                    <form id="configForm" class="space-y-6">
+                        <!-- Connection Type -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="local" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Local Redis</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="cluster_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Cluster Mode</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Host and Port -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
+                                <input type="text" id="host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label for="port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
+                                <input type="number" id="port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Authentication -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="usernanme" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
+                                <input type="text" id="usernanme" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
+                                <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                        </div>
+
+                        <!-- SSL Configuration -->
+                        <div class="border-t border-gray-200 pt-6">
+                            <div class="mb-4">
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="tls_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Enable SSL/TLS</span>
+                                </label>
+                            </div>
+
+                            <div id="sslFields" class="space-y-4 hidden">
+                                <div>
+                                    <label for="ssl_cert" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Certificate Path</label>
+                                    <input type="text" id="ssl_cert" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/cert.pem">
+                                </div>
+                                <div>
+                                    <label for="ssl_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Key Path</label>
+                                    <input type="text" id="ssl_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/key.pem">
+                                </div>
+                                <div>
+                                    <label for="ssl_ca" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL CA Path</label>
+                                    <input type="text" id="ssl_ca" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/ca.pem">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex space-x-4 pt-6">
+                            <button type="button" onclick="loadConfig()" class="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-inter font-medium">
+                                Load Current
+                            </button>
+                            <button type="submit" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                                Save Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
-    <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center">
+    <div class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center">
         <div class="animate-fade-in max-w-4xl mx-auto">
             <!-- Title with different colors -->
             <h1 class="text-6xl md:text-8xl font-bold mb-8 leading-tight font-lora">
@@ -95,6 +211,157 @@
             </a>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="relative z-10 w-full py-8 mt-auto">
+        <div class="container mx-auto px-6">
+            <div class="border-t border-gray-200 pt-8">
+                <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8">
+                    <!-- GitHub Link -->
+                    <a href="https://github.com/Aquiles-ai/Aquiles-RAG" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
+                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8"/>
+                        </svg>
+                        <span class="font-inter font-medium">Aquiles-RAG</span>
+                    </a>
+                    
+                    <!-- Web Link -->
+                    <a href="https://aquiles.vercel.app" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
+                            <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A8 8 0 0 0 5.145 4H7.5zM4.09 4a9.3 9.3 0 0 1 .64-1.539 7 7 0 0 1 .597-.933A7.03 7.03 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a7 7 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.5 12.5 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5zM5.145 12q.208.58.468 1.068c.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a7 7 0 0 1-.597-.933A9.3 9.3 0 0 1 4.09 12H2.255a7.03 7.03 0 0 0 3.072 2.472M3.82 11a13.7 13.7 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7.03 7.03 0 0 0 13.745 12H11.91a9.3 9.3 0 0 1-.64 1.539 7 7 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855q.26-.487.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.7 13.7 0 0 1-.312 2.5m2.802-3.5a7 7 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.03 7.03 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a8 8 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/>
+                        </svg>
+                        <span class="font-inter font-medium">Learn more about the Aquiles ecosystem</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Toggle configuration panel
+        function toggleConfig() {
+            const panel = document.getElementById('configPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        // Show status message
+        function showStatus(message, isError = false) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = `mb-4 p-4 rounded-xl ${isError ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`;
+            statusDiv.textContent = message;
+            statusDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Load current configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/ui/configs');
+                if (!response.ok) throw new Error('Failed to load configuration');
+                
+                const config = await response.json();
+                
+                // Populate form fields
+                document.getElementById('local').checked = config.local || false;
+                document.getElementById('host').value = config.host || '';
+                document.getElementById('port').value = config.port || '';
+                document.getElementById('usernanme').value = config.usernanme || '';
+                document.getElementById('password').value = config.password || '';
+                document.getElementById('cluster_mode').checked = config.cluster_mode || false;
+                document.getElementById('tls_mode').checked = config.tls_mode || false;
+                document.getElementById('ssl_cert').value = config.ssl_cert || '';
+                document.getElementById('ssl_key').value = config.ssl_key || '';
+                document.getElementById('ssl_ca').value = config.ssl_ca || '';
+                
+                // Toggle SSL fields visibility
+                toggleSSLFields();
+                
+                showStatus('Configuration loaded successfully');
+            } catch (error) {
+                showStatus('Error loading configuration: ' + error.message, true);
+            }
+        }
+
+        // Save configuration
+        async function saveConfig(formData) {
+            try {
+                const response = await fetch('/ui/configs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to save configuration');
+                }
+                
+                const result = await response.json();
+                showStatus('Configuration saved successfully');
+                return result;
+            } catch (error) {
+                showStatus('Error saving configuration: ' + error.message, true);
+                throw error;
+            }
+        }
+
+        // Toggle SSL fields visibility
+        function toggleSSLFields() {
+            const tlsMode = document.getElementById('tls_mode').checked;
+            const sslFields = document.getElementById('sslFields');
+            
+            if (tlsMode) {
+                sslFields.classList.remove('hidden');
+            } else {
+                sslFields.classList.add('hidden');
+            }
+        }
+
+        // Form submission handler
+        document.getElementById('configForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                local: document.getElementById('local').checked,
+                host: document.getElementById('host').value || null,
+                port: parseInt(document.getElementById('port').value) || null,
+                usernanme: document.getElementById('usernanme').value || null,
+                password: document.getElementById('password').value || null,
+                cluster_mode: document.getElementById('cluster_mode').checked,
+                tls_mode: document.getElementById('tls_mode').checked,
+                ssl_cert: document.getElementById('ssl_cert').value || null,
+                ssl_key: document.getElementById('ssl_key').value || null,
+                ssl_ca: document.getElementById('ssl_ca').value || null,
+            };
+            
+            // Remove null values to match the backend's exclude_none=True
+            Object.keys(formData).forEach(key => {
+                if (formData[key] === null || formData[key] === '') {
+                    delete formData[key];
+                }
+            });
+            
+            await saveConfig(formData);
+        });
+
+        // TLS mode change handler
+        document.getElementById('tls_mode').addEventListener('change', toggleSSLFields);
+
+        // Load configuration on page load
+        document.addEventListener('DOMContentLoaded', loadConfig);
+
+        // Close panel when clicking outside
+        document.getElementById('configPanel').addEventListener('click', (e) => {
+            if (e.target.id === 'configPanel') {
+                toggleConfig();
+            }
+        });
+    </script>
 
     <style>
         /* Smooth scrolling */
