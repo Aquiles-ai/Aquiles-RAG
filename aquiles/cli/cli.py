@@ -1,5 +1,5 @@
 import click
-from configs import load_aquiles_config, save_aquiles_configs
+from aquiles.configs import load_aquiles_config, save_aquiles_configs
 
 @click.group()
 def cli():
@@ -7,7 +7,7 @@ def cli():
     pass
 
 @cli.command("hello")
-@click.argument("--name")
+@click.option("--name")
 def greet(name):
     """Greets the given name."""
     click.echo(f"Hello, {name}!")
@@ -31,7 +31,8 @@ def save_configs(local, host, port):
 def serve():
     """Inicia el servidor FastAPI de Aquiles-RAG."""
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=5500)
+    from aquiles.main import app
+    uvicorn.run(app, host="0.0.0.0", port=5500)
 
 
 if __name__ == "__main__":

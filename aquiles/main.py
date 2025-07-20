@@ -1,13 +1,25 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, PositiveInt
 from typing import List
 import redis
-from configs import load_aquiles_config
+from aquiles.configs import load_aquiles_config
 from starlette import status
+import os
+import pathlib
 
 # For now we will leave a silly implementation, while we set up the configs, and everything necessary for Redis
 
 app = FastAPI()
+
+package_dir = pathlib.Path(__file__).parent.absolute()
+static_dir = os.path.join(package_dir, "static")
+templates_dir = os.path.join(package_dir, "templates")
+templates = Jinja2Templates(directory=templates_dir)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # This is for automatic documentation of Swagger UI.
 class SendRAG(BaseModel):
@@ -50,6 +62,18 @@ async def send_rag(q: SendRAG):
 async def query_rag(q: QueryRAG):
     return {"status": "ok",
             "response": "dummy response"}
+
+@app.get("/ui", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("ui.html", {"request": request})
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 if __name__ == "__main__":
     import uvicorn
