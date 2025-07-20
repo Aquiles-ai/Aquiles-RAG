@@ -4,15 +4,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, PositiveInt
-from typing import List
+from typing import List, Optional
 import redis
 from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
 from aquiles.connection import get_connection
 from starlette import status
 import os
 import pathlib
-
-# For now we will leave a silly implementation, while we set up the configs, and everything necessary for Redis
 
 app = FastAPI()
 
@@ -44,16 +42,16 @@ class CreateIndex(BaseModel):
     indexname: str = Field(..., description="Name of the index to create")
 
 class EditsConfigs(BaseModel):
-    local: bool = Field(True, description="Redis standalone local")
-    host: str = Field("localhost", description="Redis Host")
-    port: int = Field(6379, description="Redis Port")
-    usernanme: str = Field("", description="If a username has been configured for Redis, configure it here, by default it is not necessary")
-    password: str = Field("", description="If a password has been configured for Redis, configure it here, by default it is not necessary")
-    cluster_mode: bool = Field(False, description="Option that if you have a Redis Cluster locally, activate it, if you do not have a local cluster leave it as False")
-    tls_mode: bool = Field(False, description="Option to connect via SSL/TLS, only leave it as True if you are going to connect via SSL/TLS")
-    ssl_cert: str = Field("", description="Absolute path of the SSL Cert")
-    ssl_key: str = Field("", description="Absolute path of the SSL Key")
-    ssl_ca: str = Field("", description="Absolute path of the SSL CA")
+    local: Optional[bool] = Field(None, description="Redis standalone local")
+    host: Optional[str] = Field(None, description="Redis Host")
+    port: Optional[int] = Field(None, description="Redis Port")
+    usernanme: Optional[str] = Field(None, description="If a username has been configured for Redis")
+    password: Optional[str] = Field(None, description="If a password has been configured for Redis")
+    cluster_mode: Optional[bool] = Field(None, description="Use Redis Cluster locally?")
+    tls_mode: Optional[bool] = Field(None, description="Connect via SSL/TLS?")
+    ssl_cert: Optional[str] = Field(None, description="Absolute path of the SSL Cert")
+    ssl_key: Optional[str] = Field(None, description="Absolute path of the SSL Key")
+    ssl_ca: Optional[str] = Field(None, description="Absolute path of the SSL CA")
 
 @app.post("/create/index")
 async def create_index(q: CreateIndex):
@@ -92,9 +90,22 @@ async def get_configs():
             "ssl_ca": configs["ssl_ca"]}
 
 @app.post("/ui/configs")
-async def ui_configs(q: EditsConfigs):
-    configs = load_aquiles_config()   
-    return {"status": "ok"}
+async def ui_configs(update: EditsConfigs):
+    configs = load_aquiles_config()
+
+    partial = update.model_dump(exclude_unset=True, exclude_none=True)
+
+    if not partial:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields were sent for update."
+        )
+
+    configs.update(partial)
+
+    save_aquiles_configs(configs)
+
+    return {"status": "ok", "updated": partial}
 
 app.add_middleware(
     CORSMiddleware,
