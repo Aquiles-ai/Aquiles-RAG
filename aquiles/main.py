@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, PositiveInt
 from typing import List
 import redis
 from configs import load_aquiles_config
@@ -9,21 +9,24 @@ from starlette import status
 
 app = FastAPI()
 
+# This is for automatic documentation of Swagger UI.
 class SendRAG(BaseModel):
-    index: str
-    name: str
-    chunk_id: int = 1
-    chunk_size: int = 1024
-    raw_text: str
-    embeddings: List[float]
+    index: str = Field(..., description="Index name in Redis")
+    name_chunk: str = Field(..., description="Human-readable chunk label or name")
+    chunk_id: PositiveInt = Field(1, description="Sequential ID of the chunk within the index")
+    chunk_size: PositiveInt = Field(1024,
+        gt=0,
+        description="Number of tokens in each chunk")
+    raw_text: str = Field(..., description="Full original text of the chunk")
+    embeddings: List[float] = Field(..., description="Vector of embeddings associated with the chunk")
 
 class QueryRAG(BaseModel):
-    index: str
-    embeddings: List[float]
-    top_k: int = 5
+    index: str = Field(..., description="Name of the index in which the query will be made")
+    embeddings: List[float] = Field(..., description="Embeddings for the query")
+    top_k: int = Field(5, description="Number of most similar results to return")
 
 class CreateIndex(BaseModel):
-    indexname: str
+    indexname: str = Field(..., description="Name of the index to create")
 
 @app.post("/create/index")
 async def create_index(q: CreateIndex):
