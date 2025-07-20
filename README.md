@@ -1,4 +1,8 @@
-# Aquiles-RAG
+<h1 align="center">Aquiles-RAG</h1>
+
+<div align="center">
+  <img src="aquiles/static/aq-rag1.png" alt="Llada Logo" width="200"/>
+</div>
 
 ### Description
 Aquiles-RAG is a high-performance Retrieval-Augmented Generation (RAG) solution built on Redis. It offers a high-level interface through FastAPI REST APIs to:
