@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, PositiveInt
 from typing import List
 import redis
-from aquiles.configs import load_aquiles_config
+from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
+from aquiles.connection import get_connection
 from starlette import status
 import os
 import pathlib
@@ -20,6 +21,8 @@ static_dir = os.path.join(package_dir, "static")
 templates_dir = os.path.join(package_dir, "templates")
 templates = Jinja2Templates(directory=templates_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+init_aquiles_config()
 
 # This is for automatic documentation of Swagger UI.
 class SendRAG(BaseModel):
@@ -40,13 +43,21 @@ class QueryRAG(BaseModel):
 class CreateIndex(BaseModel):
     indexname: str = Field(..., description="Name of the index to create")
 
+class EditsConfigs(BaseModel):
+    local: bool = Field(True, description="Redis standalone local")
+    host: str = Field("localhost", description="Redis Host")
+    port: int = Field(6379, description="Redis Port")
+    usernanme: str = Field("", description="If a username has been configured for Redis, configure it here, by default it is not necessary")
+    password: str = Field("", description="If a password has been configured for Redis, configure it here, by default it is not necessary")
+    cluster_mode: bool = Field(False, description="Option that if you have a Redis Cluster locally, activate it, if you do not have a local cluster leave it as False")
+    tls_mode: bool = Field(False, description="Option to connect via SSL/TLS, only leave it as True if you are going to connect via SSL/TLS")
+    ssl_cert: str = Field("", description="Absolute path of the SSL Cert")
+    ssl_key: str = Field("", description="Absolute path of the SSL Key")
+    ssl_ca: str = Field("", description="Absolute path of the SSL CA")
+
 @app.post("/create/index")
 async def create_index(q: CreateIndex):
-    # Basic connection to Redis, I will expand this soon
-    configs = load_aquiles_config()
-    host = configs.get("host", "localhost")
-    port = configs.get("port", 6379)
-    r = redis.Redis(host=host, port=port, decode_responses=True)
+    r = get_connection()
     try:
         r.ft(q.indexname).dropindex(True)
     except redis.ResponseError as e:
@@ -66,6 +77,24 @@ async def query_rag(q: QueryRAG):
 @app.get("/ui", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("ui.html", {"request": request})
+
+@app.get("/ui/configs")
+async def get_configs():
+    configs = load_aquiles_config()
+    return {"local": configs["local"],
+            "host": configs["host"],
+            "port": configs["port"],
+            "usernanme": configs["usernanme"],
+            "password": configs["password"],
+            "cluster_mode": configs["cluster_mode"],
+            "ssl_cert": configs["ssl_cert"], 
+            "ssl_key": configs["ssl_key"],
+            "ssl_ca": configs["ssl_ca"]}
+
+@app.post("/ui/configs")
+async def ui_configs(q: EditsConfigs):
+    configs = load_aquiles_config()   
+    return {"status": "ok"}
 
 app.add_middleware(
     CORSMiddleware,
