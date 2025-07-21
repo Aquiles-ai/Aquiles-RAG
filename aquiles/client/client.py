@@ -1,0 +1,60 @@
+import requests as r
+
+class AquilesRAG:
+    def __init__(self, host: str = "http://127.0.0.1:5500"):
+        self.base_url = host
+
+    def create_index(self, index_name: str):
+        url = f'{self.base_url}/create/index'
+        body = {"indexname" : index_name}
+        try:
+            response = r.post(url=url, json=body)
+            return response.text
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+
+    def get_configs(self):
+        url = f'{self.base_url}/ui/configs'
+        try:
+            response = r.get(url=url)
+            return response.text
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+
+    def edits_configs(self, local=None, host=None, port=None,
+            username=None, password=None,
+            cluster_mode=None, tls_mode=None,
+            ssl_cert=None, ssl_key=None, ssl_ca=None):
+
+            base_url = f'{self.base_url}/ui/configs'
+
+            candidates = {
+                "local": local,
+                "host": host,
+                "port": port,
+                "usernanme": username,
+                "password": password,
+                "cluster_mode": cluster_mode,
+                "tls_mode": tls_mode,
+                "ssl_cert": ssl_cert,
+                "ssl_key": ssl_key,
+                "ssl_ca": ssl_ca,
+                }
+
+            updates = {k: v for k, v in candidates.items() if v is not None}
+
+            if not updates:
+                print("No hay ningún parámetro para actualizar.")
+                return None
+
+            response = r.post(url=base_url, json=updates)
+
+            try:
+                response.raise_for_status()
+            except r.HTTPError as e:
+                print(f"Error HTTP: {e} – {response.text}")
+                return None
+    
+            return response.json()
