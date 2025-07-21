@@ -4,8 +4,10 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, PositiveInt
-from typing import List, Optional
+from typing import List, Optional, Literal
 import redis
+from redis.commands.search.field import TextField, VectorField, NumericField
+from redis.commands.search.index_definition import IndexDefinition, IndexType
 from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
 from aquiles.connection import get_connection
 from starlette import status
@@ -40,6 +42,13 @@ class QueryRAG(BaseModel):
 
 class CreateIndex(BaseModel):
     indexname: str = Field(..., description="Name of the index to create")
+    embeddings_dim : int = Field(768, description="Dimension of embeddings")
+    dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16", "BFLOAT16"] = Field(
+        "FLOAT32",
+        description="Embedding data type. Choose from FLOAT32, FLOAT64, FLOAT16, or BFLOAT16."
+    )
+    
+
 
 class EditsConfigs(BaseModel):
     local: Optional[bool] = Field(None, description="Redis standalone local")
@@ -56,11 +65,49 @@ class EditsConfigs(BaseModel):
 @app.post("/create/index")
 async def create_index(q: CreateIndex):
     r = get_connection()
+    schema = (
+        TextField("name_chunk"),
+        NumericField("chunk_id", sortable=True),
+        NumericField("chunk_size", sortable=True),
+        TextField("raw_text"),
+        VectorField(
+            "embedding",
+            "HNSW",
+            {
+                "TYPE": q.dtype,
+                "DIM": q.embeddings_dim,
+                "DISTANCE_METRIC": "COSINE",
+                "INITIAL_CAP": 1000,
+                "M": 16,
+                "EF_CONSTRUCTION": 200,
+                "EF_RUNTIME": 100,
+             }
+        )
+    )
     try:
-        r.ft(q.indexname).dropindex(True)
+        r.ft(q.indexname).dropindex(delete_documents=False)
+    except redis.ResponseError:
+        # Si no existía, ignoramos
+        pass
+
+    # Creamos el índice con un prefijo que coincida con la convención "indexname:"
+    definition = IndexDefinition(
+        prefix=[f"{q.indexname}:"],
+        index_type=IndexType.HASH
+    )
+
+    try:
+        r.ft(q.indexname).create_index(fields=schema, definition=definition)
+
     except redis.ResponseError as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"There was an error creating the index: {e}")
+
+    return {
+        "status": "success",
+        "index": q.indexname,
+        "fields": [f.name for f in schema]
+    }
 
 @app.post("/rag/create")
 async def send_rag(q: SendRAG):

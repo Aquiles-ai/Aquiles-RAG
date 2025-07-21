@@ -1,13 +1,18 @@
 import requests as r
+from typing import Literal
 
 class AquilesRAG:
     def __init__(self, host: str = "http://127.0.0.1:5500"):
         """ Client for the Aquiles-RAG server """
         self.base_url = host
 
-    def create_index(self, index_name: str):
+    def create_index(self, index_name: str, 
+            embeddings_dim: int = 768, 
+            dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16", "BFLOAT16"] = "FLOAT32"):
         url = f'{self.base_url}/create/index'
-        body = {"indexname" : index_name}
+        body = {"indexname" : index_name,
+                "embeddings_dim": embeddings_dim,
+                "dtype": dtype}
         try:
             response = r.post(url=url, json=body)
             return response.text

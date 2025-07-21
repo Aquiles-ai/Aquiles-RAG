@@ -2,4 +2,4 @@ from aquiles.client import AquilesRAG
 
 client = AquilesRAG()
 
-print(client.get_configs())
+print(client.create_index("docs", embeddings_dim=1536, dtype="FLOAT32"))
