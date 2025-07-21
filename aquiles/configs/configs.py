@@ -22,8 +22,7 @@ class InitConfigs(BaseModel):
 
 def init_aquiles_config() -> None:
     """
-    Crea aquiles_config.json con los valores por defecto de EditsConfigs
-    si no existe. No hace nada si ya está presente.
+    Creates achilles config.json with the default values from InitConfigs if it doesn't exist. Does nothing if it's already present.
     """
     if not os.path.exists(AQUILES_CONFIG):
         # Instancia EditsConfigs con sus valores por defecto

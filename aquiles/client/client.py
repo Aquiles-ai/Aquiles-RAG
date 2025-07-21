@@ -2,6 +2,7 @@ import requests as r
 
 class AquilesRAG:
     def __init__(self, host: str = "http://127.0.0.1:5500"):
+        """ Client for the Aquiles-RAG server """
         self.base_url = host
 
     def create_index(self, index_name: str):
