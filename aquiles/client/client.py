@@ -8,11 +8,13 @@ class AquilesRAG:
 
     def create_index(self, index_name: str, 
             embeddings_dim: int = 768, 
-            dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16", "BFLOAT16"] = "FLOAT32"):
+            dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16", "BFLOAT16"] = "FLOAT32",
+            delete_the_index_if_it_exists: bool = False):
         url = f'{self.base_url}/create/index'
         body = {"indexname" : index_name,
                 "embeddings_dim": embeddings_dim,
-                "dtype": dtype}
+                "dtype": dtype,
+                "delete_the_index_if_it_exists": delete_the_index_if_it_exists}
         try:
             response = r.post(url=url, json=body)
             return response.text

@@ -47,7 +47,11 @@ class CreateIndex(BaseModel):
         "FLOAT32",
         description="Embedding data type. Choose from FLOAT32, FLOAT64, FLOAT16, or BFLOAT16."
     )
-    
+    delete_the_index_if_it_exists: bool = Field(
+        False,
+        description="If true, will drop any existing index with the same name before creating."
+    )
+
 
 
 class EditsConfigs(BaseModel):
@@ -65,6 +69,23 @@ class EditsConfigs(BaseModel):
 @app.post("/create/index")
 async def create_index(q: CreateIndex):
     r = get_connection()
+
+    index = r.ft(q.indexname)
+    exists = True
+    try:
+        index.info()  
+    except redis.ResponseError:
+        exists = False
+
+    if exists and not q.delete_the_index_if_it_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Index '{q.indexname}' already exists. Set delete_the_index_if_it_exists=true to overwrite."
+        )
+
+    if exists and q.delete_the_index_if_it_exists:
+        index.dropindex(delete_documents=False)
+
     schema = (
         TextField("name_chunk"),
         NumericField("chunk_id", sortable=True),
@@ -81,16 +102,11 @@ async def create_index(q: CreateIndex):
                 "M": 16,
                 "EF_CONSTRUCTION": 200,
                 "EF_RUNTIME": 100,
-             }
+            }
         )
     )
-    try:
-        r.ft(q.indexname).dropindex(delete_documents=False)
-    except redis.ResponseError:
-        # Si no existía, ignoramos
-        pass
 
-    # Creamos el índice con un prefijo que coincida con la convención "indexname:"
+    # Creamos el índice con prefijo
     definition = IndexDefinition(
         prefix=[f"{q.indexname}:"],
         index_type=IndexType.HASH
@@ -98,10 +114,11 @@ async def create_index(q: CreateIndex):
 
     try:
         r.ft(q.indexname).create_index(fields=schema, definition=definition)
-
-    except redis.ResponseError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"There was an error creating the index: {e}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating index: {e}"
+        )
 
     return {
         "status": "success",
