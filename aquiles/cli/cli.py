@@ -53,11 +53,13 @@ def save_configs(local, host, port,
         click.echo(f"❌ Error saving configuration: {e}")
 
 @cli.command("serve")
-def serve():
+@click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
+@click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
+def serve(host, port):
     """Inicia el servidor FastAPI de Aquiles-RAG."""
     import uvicorn
     from aquiles.main import app
-    uvicorn.run(app, host="0.0.0.0", port=5500)
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":

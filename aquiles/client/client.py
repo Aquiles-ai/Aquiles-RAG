@@ -8,7 +8,7 @@ class AquilesRAG:
 
     def create_index(self, index_name: str, 
             embeddings_dim: int = 768, 
-            dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16", "BFLOAT16"] = "FLOAT32",
+            dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
             delete_the_index_if_it_exists: bool = False):
         url = f'{self.base_url}/create/index'
         body = {"indexname" : index_name,

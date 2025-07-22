@@ -6,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, PositiveInt
 from typing import List, Optional, Literal
 import redis
+import numpy as np
 from redis.commands.search.field import TextField, VectorField, NumericField
+from redis.commands.search.query import Query
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
 from aquiles.connection import get_connection
@@ -29,6 +31,10 @@ class SendRAG(BaseModel):
     index: str = Field(..., description="Index name in Redis")
     name_chunk: str = Field(..., description="Human-readable chunk label or name")
     chunk_id: PositiveInt = Field(1, description="Sequential ID of the chunk within the index")
+    dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = Field(
+        "FLOAT32",
+        description="Embedding data type. Choose from FLOAT32, FLOAT64, or FLOAT16"
+    )
     chunk_size: PositiveInt = Field(1024,
         gt=0,
         description="Number of tokens in each chunk")
@@ -38,14 +44,23 @@ class SendRAG(BaseModel):
 class QueryRAG(BaseModel):
     index: str = Field(..., description="Name of the index in which the query will be made")
     embeddings: List[float] = Field(..., description="Embeddings for the query")
+    dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = Field(
+        "FLOAT32",
+        description="Embedding data type. Choose from FLOAT32, FLOAT64, or FLOAT16"
+    )
     top_k: int = Field(5, description="Number of most similar results to return")
+    cosine_distance_threshold: Optional[float] = Field(
+        0.6,
+        gt=0.0, lt=2.0,
+        description="Max cosine distance (0–2) to accept; if omitted, no threshold"
+    )
 
 class CreateIndex(BaseModel):
     indexname: str = Field(..., description="Name of the index to create")
     embeddings_dim : int = Field(768, description="Dimension of embeddings")
-    dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16", "BFLOAT16"] = Field(
+    dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = Field(
         "FLOAT32",
-        description="Embedding data type. Choose from FLOAT32, FLOAT64, FLOAT16, or BFLOAT16."
+        description="Embedding data type. Choose from FLOAT32, FLOAT64, or FLOAT16"
     )
     delete_the_index_if_it_exists: bool = Field(
         False,
@@ -128,13 +143,95 @@ async def create_index(q: CreateIndex):
 
 @app.post("/rag/create")
 async def send_rag(q: SendRAG):
-    return {"status": "ok",
-            "response": "dummy response"}
+    r = get_connection()
+
+    if q.dtype == "FLOAT32":
+        dtype = np.float32
+    elif q.dtype == "FLOAT16":
+        dtype = np.float16
+    elif q.dtype == "FLOAT64":
+        dtype = np.float64
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"dtype not supported"
+        )
+
+    emb_array = np.array(q.embeddings, dtype=dtype)
+    emb_bytes = emb_array.tobytes()
+
+    key = f"{q.index}:{q.chunk_id}"
+
+    mapping = {
+        "name_chunk":   q.name_chunk,
+        "chunk_id":     q.chunk_id,
+        "chunk_size":   q.chunk_size,
+        "raw_text":     q.raw_text,
+        "embedding":    emb_bytes,
+    }
+
+    try:
+        r.hset(key, mapping=mapping)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error saving chunk: {e}")
+
+    return {"status": "ok", "key": key}
 
 @app.post("/rag/query-rag")
 async def query_rag(q: QueryRAG):
-    return {"status": "ok",
-            "response": "dummy response"}
+    r = get_connection()
+
+    if q.dtype == "FLOAT32":
+        dtype = np.float32
+    elif q.dtype == "FLOAT16":
+        dtype = np.float16
+    elif q.dtype == "FLOAT64":
+        dtype = np.float64
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"dtype not supported"
+        )
+
+    emb_array = np.array(q.embeddings, dtype=dtype)
+    emb_bytes = emb_array.tobytes()
+    
+    knn_q = (
+        Query(f"*=>[KNN {q.top_k} @embedding $vec AS score]")
+        .return_fields("name_chunk", "chunk_id", "chunk_size", "raw_text", "score")
+        .dialect(2)
+    )
+
+    try:
+        res = r.ft(q.index).search(knn_q, {"vec": emb_bytes})
+    except Exception as e:
+        raise HTTPException(500, f"Search error: {e}")
+
+    docs = res.docs
+    if q.cosine_distance_threshold is not None:
+        docs = [
+            d for d in docs
+            if float(d.score) <= q.cosine_distance_threshold
+        ]
+
+    # Limitamos al top_k real
+    docs = docs[: q.top_k]
+    
+    return {
+        "status": "ok",
+        "total": len(docs),
+        "results": [
+            {
+                "name_chunk": doc.name_chunk,
+                "chunk_id":   int(doc.chunk_id),
+                "chunk_size": int(doc.chunk_size),
+                "raw_text":   doc.raw_text,
+                "score":      float(doc.score),
+            }
+            for doc in docs
+        ]
+    }
 
 @app.get("/ui", response_class=HTMLResponse)
 async def home(request: Request):
