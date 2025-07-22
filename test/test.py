@@ -1,10 +1,14 @@
-import requests
+import requests as r
 
 url = 'http://192.168.1.20:5500/rag/create'
 
 body ={
+    "index": "docs",
+    "name_chunk": "test_chunk_1",
+    "chunk_id": 1,
+    "dtype" : "FLOAT32",
+    "chunk_size": 1024,
     "raw_text" : "Dumb test to server endpoints",
-    "index": "Dumb Index",
     "embeddings" : [-0.022243177518248558, -0.022785693407058716, 0.03530530631542206, 0.011712792329490185, -0.0026273797266185284, 
     0.0002199626323999837, -0.03516620025038719, -0.0004581830289680511, 0.0747838169336319, -0.0028864662162959576, 0.028683822602033615, 
     -0.041342541575431824, -0.019474951550364494, -0.00020344369113445282, -0.022980444133281708, -0.002277873922139406, -0.003971499390900135, 
@@ -27,7 +31,43 @@ body ={
 }
 
 # Yup, it's a real embedding
+#x = requests.post(url=url, json=body)
 
-x = requests.post(url=url, json=body)
+#print(x.text)
 
-print(x.text)
+
+# Quick test to see if everything works
+
+if __name__ == "__main__":
+    from openai import OpenAI
+
+    # This is supposed to match the text and embedding above.
+    text_1 = "Dumb test"
+    # This one is not
+    text_2 = "FastAPI is based on Starlette"
+
+    def run_test(text):
+        base_url = 'http://192.168.1.20:5500'
+        client = OpenAI()
+        embedding = client.embeddings.create(
+            input=text,
+            model="text-embedding-3-small"
+        )
+        body = {
+            "index" : "docs",
+            "embeddings": embedding.data[0].embedding,
+            "dtype": "FLOAT32",
+            "top_k": 5,
+            "cosine_distance_threshold": 0.6
+        }
+        response = r.post(url=f"{base_url}/rag/query-rag", json=body)
+
+        return response.text
+
+    print(f"Test with the following text: {text_1}")
+    print("\n")
+    print(run_test(text_1))
+    print("\n")
+    print(f"Test with the following text: {text_2}")
+    print("\n")
+    print(run_test(text_2))
