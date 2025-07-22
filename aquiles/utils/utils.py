@@ -28,3 +28,24 @@ async def verify_api_key(
             )
 
         return api_key
+
+def chunk_text_by_words(text: str, chunk_size: int = 600) -> list[str]:
+    """
+    Splits a text into chunks of up to chunk_size words.
+    We will use an average of 600 words equivalent to 1024 tokens
+
+    Args:
+        text (str): Input text.
+        chunk_size (int): Maximum number of words per chunk.
+
+    Returns:
+        List[str]: List of text chunks.
+    """
+    words = text.split()
+    chunks = []
+    
+    for i in range(0, len(words), chunk_size):
+        chunk = words[i : i + chunk_size]
+        chunks.append(" ".join(chunk))
+    
+    return chunks
