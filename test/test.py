@@ -46,7 +46,7 @@ if __name__ == "__main__":
     # This one is not
     text_2 = "FastAPI is based on Starlette"
 
-    def run_test(text):
+    def run_test(text, api_key=None):
         base_url = 'http://192.168.1.20:5500'
         client = OpenAI()
         embedding = client.embeddings.create(
@@ -60,14 +60,20 @@ if __name__ == "__main__":
             "top_k": 5,
             "cosine_distance_threshold": 0.6
         }
-        response = r.post(url=f"{base_url}/rag/query-rag", json=body)
+
+        if api_key:
+            header = {"X-API-Key": api_key}
+
+            response = r.post(url=f"{base_url}/rag/query-rag", headers=header, json=body)
+        else:
+            response = r.post(url=f"{base_url}/rag/query-rag", json=body)
 
         return response.text
 
     print(f"Test with the following text: {text_1}")
     print("\n")
-    print(run_test(text_1))
+    print(run_test(text_1, api_key="dummy-api-key"))
     print("\n")
     print(f"Test with the following text: {text_2}")
     print("\n")
-    print(run_test(text_2))
+    print(run_test(text_2, api_key="dummy-api-key"))
