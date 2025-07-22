@@ -1,1 +1,1 @@
-from .configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
+from .configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config, AllowedUser

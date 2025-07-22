@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -12,6 +12,8 @@ from redis.commands.search.query import Query
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
 from aquiles.connection import get_connection
+from aquiles.configs import AllowedUser
+from aquiles.utils import verify_api_key
 from starlette import status
 import os
 import pathlib
@@ -80,8 +82,11 @@ class EditsConfigs(BaseModel):
     ssl_cert: Optional[str] = Field(None, description="Absolute path of the SSL Cert")
     ssl_key: Optional[str] = Field(None, description="Absolute path of the SSL Key")
     ssl_ca: Optional[str] = Field(None, description="Absolute path of the SSL CA")
+    allows_api_keys: Optional[List[str]] = Field( None, description="New list of allowed API keys (replaces the previous one)")
+    allows_users: Optional[List[AllowedUser]] = Field(None, description="New list of allowed users (replaces the previous one)")
+    
 
-@app.post("/create/index")
+@app.post("/create/index", dependencies=[Depends(verify_api_key)])
 async def create_index(q: CreateIndex):
     r = get_connection()
 
@@ -141,7 +146,7 @@ async def create_index(q: CreateIndex):
         "fields": [f.name for f in schema]
     }
 
-@app.post("/rag/create")
+@app.post("/rag/create", dependencies=[Depends(verify_api_key)])
 async def send_rag(q: SendRAG):
     r = get_connection()
 
@@ -178,7 +183,7 @@ async def send_rag(q: SendRAG):
 
     return {"status": "ok", "key": key}
 
-@app.post("/rag/query-rag")
+@app.post("/rag/query-rag", dependencies=[Depends(verify_api_key)])
 async def query_rag(q: QueryRAG):
     r = get_connection()
 

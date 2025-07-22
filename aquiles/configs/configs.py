@@ -1,4 +1,5 @@
 import os
+from typing import List
 from platformdirs import user_data_dir
 import json
 from pydantic import BaseModel, Field
@@ -7,6 +8,10 @@ data_dir = user_data_dir("aquiles", "AquilesRAG")
 os.makedirs(data_dir, exist_ok=True)
 
 AQUILES_CONFIG = os.path.join(data_dir, "aquiles_cofig.json")
+
+class AllowedUser(BaseModel):
+    username: str = Field(..., description="Allowed username")
+    password: str = Field(..., description="Associated password")
 
 class InitConfigs(BaseModel):
     local: bool = Field(True, description="Redis standalone local")
@@ -19,6 +24,10 @@ class InitConfigs(BaseModel):
     ssl_cert: str = Field("", description="Absolute path of the SSL Cert")
     ssl_key: str = Field("", description="Absolute path of the SSL Key")
     ssl_ca: str = Field("", description="Absolute path of the SSL CA")
+    allows_api_keys: List[str] = Field( default_factory=lambda: [""], description="API KEYS allowed to make requests")
+    allows_users: List[AllowedUser] = Field( default_factory=lambda: [AllowedUser(username="root", password="root")],
+        description="Users allowed to access the mini-UI and docs"
+    )
 
 def init_aquiles_config() -> None:
     """
