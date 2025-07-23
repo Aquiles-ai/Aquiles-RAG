@@ -1,9 +1,9 @@
-import redis
-from redis.cluster import RedisCluster
+import redis.asyncio as redis
+from redis.asyncio.cluster import RedisCluster
 from aquiles.configs import load_aquiles_config
 from pathlib import Path
 
-def get_connection():
+async def get_connection():
     configs    = load_aquiles_config()
     local      = configs.get("local", True)
     host       = configs.get("host", "localhost")
@@ -25,6 +25,7 @@ def get_connection():
     if local and cluster:
         rc = RedisCluster(host=host, port=port, decode_responses=True)
         rc.get_nodes()
+        await rc.initialize()
         return rc
 
     # 2) Redis standalone local

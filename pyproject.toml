@@ -42,7 +42,12 @@ dependencies = [
     "click>=8.0.0",
     "platformdirs",
     "redis[hiredis]",
-    "numpy"
+    "numpy",
+    "pydantic-settings",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "bcrypt==4.0.1",
+    "pydantic[email]"
 ]
 
 [project.optional-dependencies]

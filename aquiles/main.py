@@ -7,9 +7,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from datetime import timedelta
 from pydantic import BaseModel, Field, PositiveInt
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Union
 import redis
 import numpy as np
+from redis.asyncio import Redis
+from redis.asyncio.cluster import RedisCluster
 from redis.commands.search.field import TextField, VectorField, NumericField
 from redis.commands.search.query import Query
 from redis.commands.search.index_definition import IndexDefinition, IndexType
@@ -21,8 +23,17 @@ from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EX
 from starlette import status
 import os
 import pathlib
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Aquiles-RAG")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.redis = await get_connection()
+
+    yield
+
+    await app.state.redis.aclose()
+
+app = FastAPI(title="Aquiles-RAG", lifespan=lifespan)
 
 package_dir = pathlib.Path(__file__).parent.absolute()
 static_dir = os.path.join(package_dir, "static")
@@ -91,13 +102,13 @@ class EditsConfigs(BaseModel):
     
 
 @app.post("/create/index", dependencies=[Depends(verify_api_key)])
-async def create_index(q: CreateIndex):
-    r = get_connection()
+async def create_index(q: CreateIndex, request: Request):
+    r: Union[Redis, RedisCluster] = request.app.state.redis
 
     index = r.ft(q.indexname)
     exists = True
     try:
-        index.info()  
+        await index.info()  
     except redis.ResponseError:
         exists = False
 
@@ -108,7 +119,7 @@ async def create_index(q: CreateIndex):
         )
 
     if exists and q.delete_the_index_if_it_exists:
-        index.dropindex(delete_documents=False)
+        await index.dropindex(delete_documents=False)
 
     schema = (
         TextField("name_chunk"),
@@ -137,7 +148,7 @@ async def create_index(q: CreateIndex):
     )
 
     try:
-        r.ft(q.indexname).create_index(fields=schema, definition=definition)
+        await r.ft(q.indexname).create_index(fields=schema, definition=definition)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -151,8 +162,8 @@ async def create_index(q: CreateIndex):
     }
 
 @app.post("/rag/create", dependencies=[Depends(verify_api_key)])
-async def send_rag(q: SendRAG):
-    r = get_connection()
+async def send_rag(q: SendRAG, request: Request):
+    r: Union[Redis, RedisCluster] = request.app.state.redis
 
     if q.dtype == "FLOAT32":
         dtype = np.float32
@@ -188,8 +199,8 @@ async def send_rag(q: SendRAG):
     return {"status": "ok", "key": key}
 
 @app.post("/rag/query-rag", dependencies=[Depends(verify_api_key)])
-async def query_rag(q: QueryRAG):
-    r = get_connection()
+async def query_rag(q: QueryRAG, request: Request):
+    r: Union[Redis, RedisCluster] = request.app.state.redis
 
     if q.dtype == "FLOAT32":
         dtype = np.float32
@@ -213,7 +224,7 @@ async def query_rag(q: QueryRAG):
     )
 
     try:
-        res = r.ft(q.index).search(knn_q, {"vec": emb_bytes})
+        res = await r.ft(q.index).search(knn_q, {"vec": emb_bytes})
     except Exception as e:
         raise HTTPException(500, f"Search error: {e}")
 
