@@ -1,7 +1,7 @@
 <h1 align="center">Aquiles-RAG</h1>
 
 <div align="center">
-  <img src="aquiles/static/aq-rag1.png" alt="Llada Logo" width="200"/>
+  <img src="aquiles/static/aq-rag2.png" alt="Llada Logo" width="200"/>
 </div>
 
 ### Description
