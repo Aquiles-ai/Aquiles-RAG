@@ -17,6 +17,11 @@ Aquiles-RAG is a high-performance Retrieval-Augmented Generation (RAG) solution 
 * **Simple API:** Endpoints for index creation, insertion, and querying.
 * **Extensible:** Basic implementation ready for enhancements and integration into ML pipelines.
 
+## High-Level Architecture
+
+Here's a diagram illustrating how Aquiles-RAG connects clients to Redis using an asynchronous FastAPI server:
+
+![diagram](aquiles/static/diagram.png)
 
 ## Usage
 
