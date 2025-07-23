@@ -1,5 +1,7 @@
 import click
 from aquiles.configs import load_aquiles_config, save_aquiles_configs
+import os
+import importlib.util
 
 @click.group()
 def cli():
@@ -57,6 +59,26 @@ def save_configs(local, host, port,
 @click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
 def serve(host, port):
     """Inicia el servidor FastAPI de Aquiles-RAG."""
+    import uvicorn
+    from aquiles.main import app
+    uvicorn.run(app, host=host, port=port)
+
+@cli.command("deploy")
+@click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
+@click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
+@click.argument("config", type=click.Path(exists=True))
+def deploy_command(host, port, config):
+
+    module_name = os.path.splitext(os.path.basename(config))[0]
+    spec = importlib.util.spec_from_file_location(module_name, config)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    if hasattr(module, "run"):
+        module.run()
+    else:
+        click.echo("The file does not have a 'run()' function")
+
     import uvicorn
     from aquiles.main import app
     uvicorn.run(app, host=host, port=port)
