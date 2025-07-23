@@ -5,7 +5,7 @@ from aquiles.configs import AllowedUser
 
 dp_cfg = DeployConfig(local=True, host="",port=900,usernanme="",
     password="", cluster_mode=False, tls_mode=False, ssl_cert="",
-    ssl_key="", ssl_ca="", allows_users=[AllowedUser(username="root", password="root")],
+    ssl_key="", ssl_ca="", allows_api_keys=[""], allows_users=[AllowedUser(username="root", password="root")],
     ALGORITHM="HS256"
 )
 
