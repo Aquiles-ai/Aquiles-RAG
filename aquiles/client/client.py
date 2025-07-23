@@ -1,68 +1,141 @@
 import requests as r
-from typing import Literal
+from typing import List, Literal, Callable,Sequence
+from aquiles.utils import chunk_text_by_words
+
+EmbeddingFunc = Callable[[str], Sequence[float]]
 
 class AquilesRAG:
-    def __init__(self, host: str = "http://127.0.0.1:5500"):
-        """ Client for the Aquiles-RAG server """
+    def __init__(self, host: str = "http://127.0.0.1:5500", api_key = None):
+        """ 
+        Client for interacting with the Aquiles-RAG service.
+
+        Args:
+            host (str): Base URL of the Aquiles-RAG server. Defaults to localhost.
+            api_key (str, optional): API key for authenticated requests. If provided, included in headers.
+        """
         self.base_url = host
+        self.api_key = api_key
+        if self.api_key:
+            self.header = {"X-API-Key": api_key}
 
     def create_index(self, index_name: str, 
             embeddings_dim: int = 768, 
             dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
-            delete_the_index_if_it_exists: bool = False):
+            delete_the_index_if_it_exists: bool = False) -> str:
+
+        """
+        Create or overwrite a vector index in the Aquiles-RAG backend.
+
+        Args:
+            index_name (str): Unique name for the index.
+            embeddings_dim (int): Dimensionality of the embeddings to store.
+            dtype (str): Numeric data type for index storage (e.g., FLOAT32).
+            delete_if_exists (bool): If True, delete any existing index with the same name before creating.
+
+        Returns:
+            str: Server response text indicating success or details.
+        """
+
         url = f'{self.base_url}/create/index'
         body = {"indexname" : index_name,
                 "embeddings_dim": embeddings_dim,
                 "dtype": dtype,
                 "delete_the_index_if_it_exists": delete_the_index_if_it_exists}
         try:
-            response = r.post(url=url, json=body)
+            if self.api_key:
+                response = r.post(url=url, json=body, headers=self.header)
+            else:
+                response = r.post(url=url, json=body)
+
+            response.raise_for_status()
             return response.text
-        except Exception as e:
-            print(f"Error: {e}")
-            return None
+        except r.RequestException as e:
+            raise RuntimeError(f"Failed to create index '{index_name}': {e}")
 
-    def get_configs(self):
-        url = f'{self.base_url}/ui/configs'
-        try:
-            response = r.get(url=url)
-            return response.text
-        except Exception as e:
-            print(f"Error: {e}")
-            return None
+    def query(self, index: str, embedding, 
+            dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
+            top_k: int = 5,
+            cosine_distance_threshold: float = 0.6) -> List[dict]:
+            """
+            Query the vector index for nearest neighbors based on cosine similarity.
 
-    def edits_configs(self, local=None, host=None, port=None,
-            username=None, password=None,
-            cluster_mode=None, tls_mode=None,
-            ssl_cert=None, ssl_key=None, ssl_ca=None):
+            Args:
+                index (str): Name of the index to search.
+                embedding (Sequence[float]): Query embedding vector.
+                dtype (str): Data type of the index (must match index creation).
+                top_k (int): Number of top matches to return.
+                cosine_distance_threshold (float): Maximum cosine distance for valid matches.
 
-            base_url = f'{self.base_url}/ui/configs'
+            Returns:
+                List[dict]: Ordered list of match results with scores and metadata.
+            """
 
-            candidates = {
-                "local": local,
-                "host": host,
-                "port": port,
-                "usernanme": username,
-                "password": password,
-                "cluster_mode": cluster_mode,
-                "tls_mode": tls_mode,
-                "ssl_cert": ssl_cert,
-                "ssl_key": ssl_key,
-                "ssl_ca": ssl_ca,
-                }
-
-            updates = {k: v for k, v in candidates.items() if v is not None}
-
-            if not updates:
-                print("No hay ningún parámetro para actualizar.")
-                return None
-
-            response = r.post(url=base_url, json=updates)
+            url = f'{self.base_url}/rag/query-rag'
+            body ={
+                "index" : index,
+                "embeddings": embedding,
+                "dtype": dtype,
+                "top_k": top_k,
+                "cosine_distance_threshold": cosine_distance_threshold
+            }
 
             try:
+                if self.api_key:
+                    response = r.post(url=url, json=body, headers=self.header)
+                else:
+                    response = r.post(url=url, json=body)
                 response.raise_for_status()
-            except r.HTTPError as e:
-                print(f"Error HTTP: {e} – {response.text}")
-                return None
-    
-            return response.json()
+                return response.json()
+            except r.RequestException as e:
+                raise RuntimeError(f"Query failed on index '{index}': {e}")
+
+    def send_rag(self,
+                embedding_func: EmbeddingFunc,
+                index: str,
+                name_chunk: str,
+                raw_text: str,
+                dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",) -> List[dict]:
+                """
+                Split text into chunks, compute embeddings, and store them in the index.
+
+                Args:
+                    embedding_func (Callable[[str], Sequence[float]]):
+                        Function that takes a text chunk and returns its embedding vector.
+                    index (str): Name of the index to store documents.
+                    base_name (str): Prefix for chunk identifiers (e.g., document name).
+                    raw_text (str): Full text to be indexed.
+                    dtype (str): Data type of the index.
+                    chunk_size (int): Maximum number of words per chunk.
+
+                Returns:
+                    List[dict]: Server responses for each chunk upload.
+                """
+                url = f'{self.base_url}/rag/create'
+
+                chunks = chunk_text_by_words(raw_text)
+                responses = []
+
+                for idx, chunk in enumerate(chunks):
+                    emb = embedding_func(chunk)
+
+                    payload = {
+                        "index": index,
+                        "name_chunk": f"{name_chunk}_{idx}",
+                        "chunk_id": idx,
+                        "dtype": dtype,
+                        "chunk_size": 1024,
+                        "raw_text": chunk,
+                        "embeddings": emb,
+                        }
+
+                    try:
+                        if self.api_key:
+                            resp = r.post(url, json=payload, headers=self.header, timeout=10)
+                        else:
+                            resp = r.post(url, json=payload, timeout=10)
+                        resp.raise_for_status()
+                        responses.append(resp.json())
+                    except Exception as e:
+                        responses.append({"chunk_index": idx, "error": str(e)})
+
+                return responses
