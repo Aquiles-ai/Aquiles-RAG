@@ -1,8 +1,11 @@
 from fastapi import FastAPI, HTTPException, Request, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from datetime import timedelta
 from pydantic import BaseModel, Field, PositiveInt
 from typing import List, Optional, Literal
 import redis
@@ -14,11 +17,12 @@ from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aqui
 from aquiles.connection import get_connection
 from aquiles.configs import AllowedUser
 from aquiles.utils import verify_api_key
+from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 from starlette import status
 import os
 import pathlib
 
-app = FastAPI()
+app = FastAPI(title="Aquiles-RAG")
 
 package_dir = pathlib.Path(__file__).parent.absolute()
 static_dir = os.path.join(package_dir, "static")
@@ -238,40 +242,101 @@ async def query_rag(q: QueryRAG):
         ]
     }
 
+# All of these are routes for the UI. I'm going to try to make them as minimal as possible so as not to affect performance.
+
+@app.exception_handler(HTTPException)
+async def auth_exception_handler(request: Request, exc: HTTPException):
+    if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        # pasa la ruta original en el parámetro 'next'
+        login_url = f"/login/ui?next={request.url.path}"
+        return RedirectResponse(url=login_url, status_code=302)
+    # para otros HTTPException, responde normalmente
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    if not authenticate_user(form_data.username, form_data.password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Usuario o contraseña inválidos")
+    token = create_access_token(
+        username=form_data.username,
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    response = RedirectResponse(url="/ui", status_code=302)
+    # Guardo la cookie con esquema Bearer
+    response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
+    return response
+
 @app.get("/ui", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse("ui.html", {"request": request})
+async def home(request: Request, user: str = Depends(get_current_user)):
+    try:
+        return templates.TemplateResponse("ui.html", {"request": request})
+    except HTTPException:
+        return RedirectResponse(url="/login/ui", status_code=302)
+
+@app.get("/login/ui", response_class=HTMLResponse)
+async def login_ui(request: Request):
+    return templates.TemplateResponse("login_ui.html", {"request": request})
 
 @app.get("/ui/configs")
-async def get_configs():
-    configs = load_aquiles_config()
-    return {"local": configs["local"],
-            "host": configs["host"],
-            "port": configs["port"],
-            "usernanme": configs["usernanme"],
-            "password": configs["password"],
-            "cluster_mode": configs["cluster_mode"],
-            "ssl_cert": configs["ssl_cert"], 
-            "ssl_key": configs["ssl_key"],
-            "ssl_ca": configs["ssl_ca"]}
+async def get_configs(user: str = Depends(get_current_user)):
+    try:
+        configs = load_aquiles_config()
+        return {"local": configs["local"],
+                "host": configs["host"],
+                "port": configs["port"],
+                "usernanme": configs["usernanme"],
+                "password": configs["password"],
+                "cluster_mode": configs["cluster_mode"],
+                "ssl_cert": configs["ssl_cert"], 
+                "ssl_key": configs["ssl_key"],
+                "ssl_ca": configs["ssl_ca"],
+                "allows_api_keys": configs["allows_api_keys"],
+                "allows_users": configs["allows_users"]
+                }
+    except HTTPException:
+        return RedirectResponse(url="/login/ui", status_code=302)
 
 @app.post("/ui/configs")
-async def ui_configs(update: EditsConfigs):
-    configs = load_aquiles_config()
+async def ui_configs(update: EditsConfigs, user: str = Depends(get_current_user)):
+    try:
+        configs = load_aquiles_config()
 
-    partial = update.model_dump(exclude_unset=True, exclude_none=True)
+        partial = update.model_dump(exclude_unset=True, exclude_none=True)
 
-    if not partial:
-        raise HTTPException(
-            status_code=400,
-            detail="No fields were sent for update."
-        )
+        if not partial:
+            raise HTTPException(
+                status_code=400,
+                detail="No fields were sent for update."
+            )
 
-    configs.update(partial)
+        configs.update(partial)
 
-    save_aquiles_configs(configs)
+        save_aquiles_configs(configs)
 
-    return {"status": "ok", "updated": partial}
+        return {"status": "ok", "updated": partial}
+    except HTTPException:
+        return RedirectResponse(url="/login/ui", status_code=302)
+
+@app.get(app.openapi_url, include_in_schema=False)
+async def protected_openapi(user: str = Depends(get_current_user)):
+    return JSONResponse(app.openapi())
+
+@app.get("/docs", include_in_schema=False)
+async def protected_swagger_ui(request: Request, user: str = Depends(get_current_user)):
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} – Docs",
+        swagger_ui_parameters=app.swagger_ui_parameters, 
+    )
+
+@app.get("/redoc", include_in_schema=False)
+async def protected_redoc_ui(request: Request, user: str = Depends(get_current_user)):
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} – ReDoc",
+    )
 
 app.add_middleware(
     CORSMiddleware,

@@ -87,11 +87,11 @@
     <!-- Configuration Panel -->
     <div id="configPanel" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slide-down">
+            <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-slide-down">
                 <div class="p-8">
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent font-lora">
-                            Redis Configuration
+                            Configuration
                         </h2>
                         <button onclick="toggleConfig()" class="text-gray-400 hover:text-gray-600 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
@@ -104,69 +104,112 @@
                     <div id="statusMessage" class="hidden mb-4 p-4 rounded-xl"></div>
 
                     <!-- Configuration Form -->
-                    <form id="configForm" class="space-y-6">
-                        <!-- Connection Type -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="flex items-center space-x-3 cursor-pointer">
-                                    <input type="checkbox" id="local" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-                                    <span class="text-sm font-medium text-gray-700 font-inter">Local Redis</span>
-                                </label>
+                    <form id="configForm" class="space-y-8">
+                        <!-- Redis Configuration Section -->
+                        <div class="border border-gray-200 rounded-2xl p-6">
+                            <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Redis Configuration</h3>
+                            
+                            <!-- Connection Type -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label class="flex items-center space-x-3 cursor-pointer">
+                                        <input type="checkbox" id="local" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                        <span class="text-sm font-medium text-gray-700 font-inter">Local Redis</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex items-center space-x-3 cursor-pointer">
+                                        <input type="checkbox" id="cluster_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                        <span class="text-sm font-medium text-gray-700 font-inter">Cluster Mode</span>
+                                    </label>
+                                </div>
                             </div>
-                            <div>
-                                <label class="flex items-center space-x-3 cursor-pointer">
-                                    <input type="checkbox" id="cluster_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-                                    <span class="text-sm font-medium text-gray-700 font-inter">Cluster Mode</span>
-                                </label>
+
+                            <!-- Host and Port -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label for="host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
+                                    <input type="text" id="host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                </div>
+                                <div>
+                                    <label for="port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
+                                    <input type="number" id="port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                </div>
+                            </div>
+
+                            <!-- Authentication -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label for="usernanme" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
+                                    <input type="text" id="usernanme" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                </div>
+                                <div>
+                                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
+                                    <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                </div>
+                            </div>
+
+                            <!-- SSL Configuration -->
+                            <div class="border-t border-gray-200 pt-6">
+                                <div class="mb-4">
+                                    <label class="flex items-center space-x-3 cursor-pointer">
+                                        <input type="checkbox" id="tls_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                        <span class="text-sm font-medium text-gray-700 font-inter">Enable SSL/TLS</span>
+                                    </label>
+                                </div>
+
+                                <div id="sslFields" class="space-y-4 hidden">
+                                    <div>
+                                        <label for="ssl_cert" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Certificate Path</label>
+                                        <input type="text" id="ssl_cert" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/cert.pem">
+                                    </div>
+                                    <div>
+                                        <label for="ssl_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Key Path</label>
+                                        <input type="text" id="ssl_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/key.pem">
+                                    </div>
+                                    <div>
+                                        <label for="ssl_ca" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL CA Path</label>
+                                        <input type="text" id="ssl_ca" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/ca.pem">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Host and Port -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
-                                <input type="text" id="host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                            </div>
-                            <div>
-                                <label for="port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
-                                <input type="number" id="port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                            </div>
-                        </div>
-
-                        <!-- Authentication -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="usernanme" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
-                                <input type="text" id="usernanme" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                            </div>
-                            <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
-                                <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                            </div>
-                        </div>
-
-                        <!-- SSL Configuration -->
-                        <div class="border-t border-gray-200 pt-6">
-                            <div class="mb-4">
-                                <label class="flex items-center space-x-3 cursor-pointer">
-                                    <input type="checkbox" id="tls_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-                                    <span class="text-sm font-medium text-gray-700 font-inter">Enable SSL/TLS</span>
+                        <!-- Access Control Section -->
+                        <div class="border border-gray-200 rounded-2xl p-6">
+                            <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Access Control</h3>
+                            
+                            <!-- API Keys Section -->
+                            <div class="mb-6">
+                                <label for="allows_api_keys" class="block text-sm font-medium text-gray-700 mb-2 font-inter">
+                                    Allowed API Keys
+                                    <span class="text-gray-500 text-xs">(one per line, leave empty to disable API key authentication)</span>
                                 </label>
+                                <textarea 
+                                    id="allows_api_keys" 
+                                    rows="4"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm resize-none"
+                                    placeholder="api_key_1&#10;api_key_2&#10;api_key_3"
+                                ></textarea>
+                                <p class="text-xs text-gray-500 mt-1 font-inter">Enter each API key on a new line. If empty, API key authentication will be disabled.</p>
                             </div>
 
-                            <div id="sslFields" class="space-y-4 hidden">
-                                <div>
-                                    <label for="ssl_cert" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Certificate Path</label>
-                                    <input type="text" id="ssl_cert" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/cert.pem">
+                            <!-- Users Section -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-center mb-3">
+                                    <label class="block text-sm font-medium text-gray-700 font-inter">
+                                        Allowed Users
+                                    </label>
+                                    <button type="button" onclick="addUser()" class="text-purple-600 hover:text-purple-700 text-sm font-medium font-inter">
+                                        + Add User
+                                    </button>
                                 </div>
-                                <div>
-                                    <label for="ssl_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Key Path</label>
-                                    <input type="text" id="ssl_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/key.pem">
+                                
+                                <div id="usersContainer" class="space-y-3">
+                                    <!-- Users will be dynamically added here -->
                                 </div>
-                                <div>
-                                    <label for="ssl_ca" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL CA Path</label>
-                                    <input type="text" id="ssl_ca" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/ca.pem">
-                                </div>
+                                
+                                <p class="text-xs text-gray-500 mt-2 font-inter">Add username and password pairs for user authentication.</p>
                             </div>
                         </div>
 
@@ -256,6 +299,71 @@
             }, 5000);
         }
 
+        // Add user row
+        function addUser(username = '', password = '') {
+            const usersContainer = document.getElementById('usersContainer');
+            
+            const userRow = document.createElement('div');
+            userRow.className = 'flex space-x-3 items-center p-4 bg-gray-50 rounded-xl';
+            userRow.innerHTML = `
+                <div class="flex-1">
+                    <input 
+                        type="text" 
+                        placeholder="Username" 
+                        value="${username}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-inter text-sm"
+                        data-field="username"
+                    >
+                </div>
+                <div class="flex-1">
+                    <input 
+                        type="password" 
+                        placeholder="Password" 
+                        value="${password}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-inter text-sm"
+                        data-field="password"
+                    >
+                </div>
+                <button 
+                    type="button" 
+                    onclick="removeUser(this)" 
+                    class="text-red-500 hover:text-red-700 transition-colors p-2"
+                    title="Remove user"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+                    </svg>
+                </button>
+            `;
+            
+            usersContainer.appendChild(userRow);
+        }
+
+        // Remove user row
+        function removeUser(button) {
+            const usersContainer = document.getElementById('usersContainer');
+            if (usersContainer.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+
+        // Collect users data
+        function collectUsersData() {
+            const usersContainer = document.getElementById('usersContainer');
+            const users = [];
+            
+            Array.from(usersContainer.children).forEach(userRow => {
+                const username = userRow.querySelector('[data-field="username"]').value.trim();
+                const password = userRow.querySelector('[data-field="password"]').value.trim();
+                
+                if (username && password) {
+                    users.push({ username, password });
+                }
+            });
+            
+            return users;
+        }
+
         // Load current configuration
         async function loadConfig() {
             try {
@@ -264,7 +372,7 @@
                 
                 const config = await response.json();
                 
-                // Populate form fields
+                // Populate existing form fields
                 document.getElementById('local').checked = config.local || false;
                 document.getElementById('host').value = config.host || '';
                 document.getElementById('port').value = config.port || '';
@@ -275,6 +383,23 @@
                 document.getElementById('ssl_cert').value = config.ssl_cert || '';
                 document.getElementById('ssl_key').value = config.ssl_key || '';
                 document.getElementById('ssl_ca').value = config.ssl_ca || '';
+                
+                // Populate API keys
+                const apiKeys = config.allows_api_keys || [];
+                document.getElementById('allows_api_keys').value = apiKeys.join('\n');
+                
+                // Populate users
+                const users = config.allows_users || [];
+                const usersContainer = document.getElementById('usersContainer');
+                usersContainer.innerHTML = '';
+                
+                if (users.length === 0) {
+                    addUser(); // Add one empty user row by default
+                } else {
+                    users.forEach(user => {
+                        addUser(user.username, user.password);
+                    });
+                }
                 
                 // Toggle SSL fields visibility
                 toggleSSLFields();
@@ -326,6 +451,13 @@
         document.getElementById('configForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Collect API keys
+            const apiKeysText = document.getElementById('allows_api_keys').value.trim();
+            const apiKeys = apiKeysText ? apiKeysText.split('\n').map(key => key.trim()).filter(key => key) : [];
+            
+            // Collect users
+            const users = collectUsersData();
+            
             const formData = {
                 local: document.getElementById('local').checked,
                 host: document.getElementById('host').value || null,
@@ -337,6 +469,8 @@
                 ssl_cert: document.getElementById('ssl_cert').value || null,
                 ssl_key: document.getElementById('ssl_key').value || null,
                 ssl_ca: document.getElementById('ssl_ca').value || null,
+                allows_api_keys: apiKeys.length > 0 ? apiKeys : null,
+                allows_users: users.length > 0 ? users : null,
             };
             
             // Remove null values to match the backend's exclude_none=True
