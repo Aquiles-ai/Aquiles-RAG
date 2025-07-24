@@ -63,15 +63,28 @@
 > docker run -d --name redis-stack -p 6379:6379 redis/redis-stack-server:latest
 > ```
 
----
+
+Here’s an updated **Installation** section that highlights the PyPI package first:
 
 ## 🚀 Installation
+
+### Via PyPI
+
+The easiest way is to install directly from PyPI:
+
+```bash
+pip install aquiles-rag
+```
+
+### From Source (optional)
+
+If you’d like to work from the latest code or contribute:
 
 1. Clone the repository and navigate into it:
 
    ```bash
-   git clone https://github.com/your-org/aquiles-rag.git
-   cd aquiles-rag
+   git clone https://github.com/Aquiles-ai/Aquiles-RAG.git
+   cd Aquiles-RAG
    ```
 
 2. Create a virtual environment and install dependencies:
@@ -82,13 +95,12 @@
    pip install -r requirements.txt
    ```
 
-3. (Optional) Install in editable mode:
+3. (Optional) Install in editable/development mode:
 
    ```bash
    pip install -e .
    ```
 
----
 
 ## 🔧 Configuration & Connection Options
 
