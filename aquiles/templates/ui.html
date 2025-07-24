@@ -1,525 +1,1139 @@
 <!DOCTYPE html>
 <html lang="en" class="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aquiles-RAG</title>
-    <link rel="icon" href="static/aq-fav.png" type="image/png">
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'lora': ['Lora', 'serif'],
-                        'inter': ['Inter', 'sans-serif'],
-                        'mono': ['JetBrains Mono', 'monospace'],
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aquiles-RAG Playground</title>
+<link rel="icon" href="static/aq-fav.png" type="image/png">
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    'lora': ['Lora', 'serif'],
+                    'inter': ['Inter', 'sans-serif'],
+                    'mono': ['JetBrains Mono', 'monospace'],
+                },
+                colors: {
+                    cream: {
+                        50: '#fefefe',
+                        100: '#faf9f7',
+                        200: '#f5f4f1',
+                        300: '#f0eeea',
                     },
-                    colors: {
-                        cream: {
-                            50: '#fefefe',
-                            100: '#faf9f7',
-                            200: '#f5f4f1',
-                            300: '#f0eeea',
-                        },
-                        purple: {
-                            400: '#a855f7',
-                            500: '#8b5cf6',
-                            600: '#7c3aed',
-                            700: '#6d28d9',
-                            800: '#5b21b6',
-                            900: '#4c1d95',
-                        }
+                    purple: {
+                        400: '#a855f7',
+                        500: '#8b5cf6',
+                        600: '#7c3aed',
+                        700: '#6d28d9',
+                        800: '#5b21b6',
+                        900: '#4c1d95',
+                    }
+                },
+                animation: {
+                    'float': 'float 6s ease-in-out infinite',
+                    'glow': 'glow 2s ease-in-out infinite alternate',
+                    'fade-in': 'fadeIn 1s ease-out',
+                    'slide-down': 'slideDown 0.3s ease-out',
+                },
+                keyframes: {
+                    float: {
+                        '0%, 100%': { transform: 'translateY(0px)' },
+                        '50%': { transform: 'translateY(-20px)' },
                     },
-                    animation: {
-                        'float': 'float 6s ease-in-out infinite',
-                        'glow': 'glow 2s ease-in-out infinite alternate',
-                        'fade-in': 'fadeIn 1s ease-out',
-                        'slide-down': 'slideDown 0.3s ease-out',
+                    glow: {
+                        '0%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.2)' },
+                        '100%': { boxShadow: '0 0 40px rgba(139, 92, 246, 0.4)' },
                     },
-                    keyframes: {
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0px)' },
-                            '50%': { transform: 'translateY(-20px)' },
-                        },
-                        glow: {
-                            '0%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.2)' },
-                            '100%': { boxShadow: '0 0 40px rgba(139, 92, 246, 0.4)' },
-                        },
-                        fadeIn: {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        },
-                        slideDown: {
-                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        }
+                    fadeIn: {
+                        '0%': { opacity: '0' },
+                        '100%': { opacity: '1' },
+                    },
+                    slideDown: {
+                        '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                        '100%': { transform: 'translateY(0)', opacity: '1' },
                     }
                 }
             }
         }
-    </script>
+    }
+</script>
 </head>
 <body class="bg-cream-50 text-gray-900 min-h-screen overflow-x-hidden font-inter flex flex-col">
-    <!-- Background Effects -->
-    <div class="fixed inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float"></div>
-        <div class="absolute top-3/4 right-1/4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float" style="animation-delay: 2s;"></div>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-5 animate-float" style="animation-delay: 4s;"></div>
-    </div>
+<!-- Background Effects -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float"></div>
+    <div class="absolute top-3/4 right-1/4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float" style="animation-delay: 2s;"></div>
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-5 animate-float" style="animation-delay: 4s;"></div>
+</div>
 
-    <!-- Settings Button (Top Right) -->
-    <div class="fixed top-6 right-6 z-50">
-        <button onclick="toggleConfig()" class="group relative inline-flex items-center justify-center w-12 h-12 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-lg transition-all duration-300 animate-glow">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="text-purple-600 group-hover:text-purple-700" viewBox="0 0 16 16">
-                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
-                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
-            </svg>
-        </button>
-    </div>
+<!-- Settings Button (Top Right) -->
+<div class="fixed top-6 right-6 z-50">
+    <button onclick="toggleConfig()" class="group relative inline-flex items-center justify-center w-12 h-12 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-lg transition-all duration-300 animate-glow">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="text-purple-600 group-hover:text-purple-700" viewBox="0 0 16 16">
+            <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
+            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
+        </svg>
+    </button>
+</div>
 
-    <!-- Configuration Panel -->
-    <div id="configPanel" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-slide-down">
-                <div class="p-8">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent font-lora">
-                            Configuration
-                        </h2>
-                        <button onclick="toggleConfig()" class="text-gray-400 hover:text-gray-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
-                            </svg>
-                        </button>
+<!-- Configuration Panel -->
+<div id="configPanel" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-slide-down">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-purple-600 bg-clip-text text-transparent font-lora">
+                        Configuration
+                    </h2>
+                    <button onclick="toggleConfig()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Status Message -->
+                <div id="statusMessage" class="hidden mb-4 p-4 rounded-xl"></div>
+
+                <!-- Configuration Form -->
+                <form id="configForm" class="space-y-8">
+                    <!-- Redis Configuration Section -->
+                    <div class="border border-gray-200 rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Redis Configuration</h3>
+                        
+                        <!-- Connection Type -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="local" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Local Redis</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="cluster_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Cluster Mode</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Host and Port -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label for="host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
+                                <input type="text" id="host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label for="port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
+                                <input type="number" id="port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                        </div>
+
+                        <!-- Authentication -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label for="usernanme" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
+                                <input type="text" id="usernanme" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
+                                <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                        </div>
+
+                        <!-- SSL Configuration -->
+                        <div class="border-t border-gray-200 pt-6">
+                            <div class="mb-4">
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="tls_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Enable SSL/TLS</span>
+                                </label>
+                            </div>
+
+                            <div id="sslFields" class="space-y-4 hidden">
+                                <div>
+                                    <label for="ssl_cert" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Certificate Path</label>
+                                    <input type="text" id="ssl_cert" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/cert.pem">
+                                </div>
+                                <div>
+                                    <label for="ssl_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Key Path</label>
+                                    <input type="text" id="ssl_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/key.pem">
+                                </div>
+                                <div>
+                                    <label for="ssl_ca" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL CA Path</label>
+                                    <input type="text" id="ssl_ca" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/ca.pem">
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Status Message -->
-                    <div id="statusMessage" class="hidden mb-4 p-4 rounded-xl"></div>
-
-                    <!-- Configuration Form -->
-                    <form id="configForm" class="space-y-8">
-                        <!-- Redis Configuration Section -->
-                        <div class="border border-gray-200 rounded-2xl p-6">
-                            <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Redis Configuration</h3>
-                            
-                            <!-- Connection Type -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div>
-                                    <label class="flex items-center space-x-3 cursor-pointer">
-                                        <input type="checkbox" id="local" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-                                        <span class="text-sm font-medium text-gray-700 font-inter">Local Redis</span>
-                                    </label>
-                                </div>
-                                <div>
-                                    <label class="flex items-center space-x-3 cursor-pointer">
-                                        <input type="checkbox" id="cluster_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-                                        <span class="text-sm font-medium text-gray-700 font-inter">Cluster Mode</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Host and Port -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div>
-                                    <label for="host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
-                                    <input type="text" id="host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                                </div>
-                                <div>
-                                    <label for="port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
-                                    <input type="number" id="port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                                </div>
-                            </div>
-
-                            <!-- Authentication -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                <div>
-                                    <label for="usernanme" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
-                                    <input type="text" id="usernanme" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                                </div>
-                                <div>
-                                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
-                                    <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
-                                </div>
-                            </div>
-
-                            <!-- SSL Configuration -->
-                            <div class="border-t border-gray-200 pt-6">
-                                <div class="mb-4">
-                                    <label class="flex items-center space-x-3 cursor-pointer">
-                                        <input type="checkbox" id="tls_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
-                                        <span class="text-sm font-medium text-gray-700 font-inter">Enable SSL/TLS</span>
-                                    </label>
-                                </div>
-
-                                <div id="sslFields" class="space-y-4 hidden">
-                                    <div>
-                                        <label for="ssl_cert" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Certificate Path</label>
-                                        <input type="text" id="ssl_cert" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/cert.pem">
-                                    </div>
-                                    <div>
-                                        <label for="ssl_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Key Path</label>
-                                        <input type="text" id="ssl_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/key.pem">
-                                    </div>
-                                    <div>
-                                        <label for="ssl_ca" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL CA Path</label>
-                                        <input type="text" id="ssl_ca" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/ca.pem">
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Access Control Section -->
+                    <div class="border border-gray-200 rounded-2xl p-6">
+                        <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Access Control</h3>
+                        
+                        <!-- API Keys Section -->
+                        <div class="mb-6">
+                            <label for="allows_api_keys" class="block text-sm font-medium text-gray-700 mb-2 font-inter">
+                                Allowed API Keys
+                                <span class="text-gray-500 text-xs">(one per line, leave empty to disable API key authentication)</span>
+                            </label>
+                            <textarea 
+                                id="allows_api_keys" 
+                                rows="4"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm resize-none"
+                                placeholder="api_key_1&#10;api_key_2&#10;api_key_3"
+                            ></textarea>
+                            <p class="text-xs text-gray-500 mt-1 font-inter">Enter each API key on a new line. If empty, API key authentication will be disabled.</p>
                         </div>
 
-                        <!-- Access Control Section -->
-                        <div class="border border-gray-200 rounded-2xl p-6">
-                            <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Access Control</h3>
-                            
-                            <!-- API Keys Section -->
-                            <div class="mb-6">
-                                <label for="allows_api_keys" class="block text-sm font-medium text-gray-700 mb-2 font-inter">
-                                    Allowed API Keys
-                                    <span class="text-gray-500 text-xs">(one per line, leave empty to disable API key authentication)</span>
+                        <!-- Users Section -->
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="block text-sm font-medium text-gray-700 font-inter">
+                                    Allowed Users
                                 </label>
-                                <textarea 
-                                    id="allows_api_keys" 
-                                    rows="4"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm resize-none"
-                                    placeholder="api_key_1&#10;api_key_2&#10;api_key_3"
-                                ></textarea>
-                                <p class="text-xs text-gray-500 mt-1 font-inter">Enter each API key on a new line. If empty, API key authentication will be disabled.</p>
+                                <button type="button" onclick="addUser()" class="text-purple-600 hover:text-purple-700 text-sm font-medium font-inter">
+                                    + Add User
+                                </button>
                             </div>
-
-                            <!-- Users Section -->
-                            <div class="mb-6">
-                                <div class="flex justify-between items-center mb-3">
-                                    <label class="block text-sm font-medium text-gray-700 font-inter">
-                                        Allowed Users
-                                    </label>
-                                    <button type="button" onclick="addUser()" class="text-purple-600 hover:text-purple-700 text-sm font-medium font-inter">
-                                        + Add User
-                                    </button>
-                                </div>
-                                
-                                <div id="usersContainer" class="space-y-3">
-                                    <!-- Users will be dynamically added here -->
-                                </div>
-                                
-                                <p class="text-xs text-gray-500 mt-2 font-inter">Add username and password pairs for user authentication.</p>
+                            
+                            <div id="usersContainer" class="space-y-3">
+                                <!-- Users will be dynamically added here -->
                             </div>
+                            
+                            <p class="text-xs text-gray-500 mt-2 font-inter">Add username and password pairs for user authentication.</p>
                         </div>
+                    </div>
 
-                        <!-- Action Buttons -->
-                        <div class="flex space-x-4 pt-6">
-                            <button type="button" onclick="loadConfig()" class="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-inter font-medium">
-                                Load Current
-                            </button>
-                            <button type="submit" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
-                                Save Configuration
-                            </button>
-                        </div>
-                    </form>
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-4 pt-6">
+                        <button type="button" onclick="loadConfig()" class="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-inter font-medium">
+                            Load Current
+                        </button>
+                        <button type="submit" class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                            Save Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full animate-slide-down">
+            <div class="p-8 text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-green-600" viewBox="0 0 16 16">
+                        <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.061L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2 font-lora">Success!</h3>
+                <p id="successMessage" class="text-gray-600 mb-6 font-inter"></p>
+                <button onclick="closeSuccessModal()" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- OpenAI API Key Modal -->
+<div id="openaiModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full animate-slide-down">
+            <div class="p-8">
+                <!-- Header with OpenAI Logo -->
+                <div class="text-center mb-6">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 mb-4">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z" fill="#10A37F"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2 font-lora">OpenAI API Key Required</h3>
+                </div>
+                
+                <!-- Information Message -->
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                    <p class="text-sm text-blue-800 font-inter leading-relaxed">
+                        The OpenAI API KEY will be requested every time queries are made from the playground. For security reasons, Aquiles-RAG does not store your keys. Aquiles-RAG is not restricted to generating embeddings with OpenAI. Aquiles-RAG is embedding-agnostic. However, for ease of use and testing from the playground, we opted for OpenAI. You can consult our documentation to learn how to integrate its custom embedding generation: 
+                        <a href="https://aquiles-ai.github.io/aqRAG-docs" target="_blank" class="text-blue-600 hover:text-blue-700 underline font-medium">Aquiles-RAG Docs</a>.
+                    </p>
+                </div>
+                
+                <!-- API Key Input -->
+                <div class="mb-6">
+                    <label for="openaiApiKey" class="block text-sm font-medium text-gray-700 mb-2 font-inter">
+                        Enter your OpenAI API Key
+                    </label>
+                    <input 
+                        type="password" 
+                        id="openaiApiKey" 
+                        placeholder="sk-..." 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm"
+                    >
+                    <p class="text-xs text-gray-500 mt-2 font-inter">
+                        Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-purple-600 hover:text-purple-700 underline">OpenAI Platform</a>
+                    </p>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex space-x-3">
+                    <button onclick="cancelOpenAIModal()" class="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-inter font-medium">
+                        Cancel
+                    </button>
+                    <button onclick="confirmOpenAIKey()" class="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                        Continue
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Main Content -->
-    <div class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div class="animate-fade-in max-w-4xl mx-auto">
-            <!-- Title with different colors -->
-            <h1 class="text-6xl md:text-8xl font-bold mb-8 leading-tight font-lora">
-                <span class="text-gray-900">Aquiles</span><span class="text-purple-600 font-semibold">-RAG</span>
-            </h1>
-            
-            <!-- Simple announcement -->
-            <p class="text-2xl md:text-3xl text-gray-700 mb-12 font-light leading-relaxed font-lora">
-                There will be content here soon.
-            </p>
-            
-            <!-- CTA Button with link -->
-            <a href="/docs" class="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl hover:from-purple-700 hover:to-purple-800 transform hover:-translate-y-1 hover:shadow-xl transition-all duration-300 font-inter animate-glow">
+<!-- Main Content -->
+<div class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center">
+    <div class="animate-fade-in max-w-6xl mx-auto w-full pt-16 md:pt-24">
+        <!-- Title with different colors -->
+        <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight font-lora">
+            <span class="text-gray-900">Aquiles</span><span class="text-purple-600 font-semibold">-RAG</span>
+            <span class="text-2xl md:text-3xl text-gray-600 font-light block mt-2">Playground</span>
+        </h1>
+        
+        <!-- Description -->
+        <p class="text-lg md:text-xl text-gray-700 mb-8 font-light leading-relaxed font-lora max-w-3xl mx-auto">
+            Test and verify RAG functionality. For complete documentation and advanced features, visit our external docs.
+        </p>
+
+        <!-- CTA Button for docs -->
+        <div class="mb-12">
+            <a href="https://aquiles-ai.github.io/aqRAG-docs" target="_blank" rel="noopener noreferrer" class="group relative inline-flex items-center justify-center px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl hover:from-purple-700 hover:to-purple-800 transform hover:-translate-y-1 hover:shadow-lg transition-all duration-300 font-inter">
                 <span class="relative z-10 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="mr-3" viewBox="0 0 16 16">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="mr-2" viewBox="0 0 16 16">
                         <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
                         <path d="M8.646 6.646a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L10.293 9 8.646 7.354a.5.5 0 0 1 0-.708M3 9.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5"/>
                     </svg>
-                    Automatic documentation of APIs
+                    Complete documentation for Aquiles-RAG
                 </span>
-                <div class="absolute inset-0 bg-gradient-to-r from-purple-700 to-purple-800 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </a>
         </div>
-    </div>
 
-    <!-- Footer -->
-    <footer class="relative z-10 w-full py-8 mt-auto">
-        <div class="container mx-auto px-6">
-            <div class="border-t border-gray-200 pt-8">
-                <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8">
-                    <!-- GitHub Link -->
-                    <a href="https://github.com/Aquiles-ai/Aquiles-RAG" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
-                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8"/>
+        <!-- Playground Interface -->
+        <div class="bg-white rounded-3xl shadow-2xl p-8 text-left max-w-5xl mx-auto">
+            <!-- Status Messages -->
+            <div id="playgroundStatus" class="hidden mb-6 p-4 rounded-xl"></div>
+
+            <!-- Available Indices -->
+            <div class="mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-900 font-lora">Available Indices</h3>
+                    <button onclick="refreshIndices()" class="flex items-center space-x-2 text-purple-600 hover:text-purple-700 text-sm font-medium font-inter">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/>
+                            <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/>
                         </svg>
-                        <span class="font-inter font-medium">Aquiles-RAG</span>
-                    </a>
-                    
-                    <!-- Web Link -->
-                    <a href="https://aquiles.vercel.app" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
-                            <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A8 8 0 0 0 5.145 4H7.5zM4.09 4a9.3 9.3 0 0 1 .64-1.539 7 7 0 0 1 .597-.933A7.03 7.03 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a7 7 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.5 12.5 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5zM5.145 12q.208.58.468 1.068c.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a7 7 0 0 1-.597-.933A9.3 9.3 0 0 1 4.09 12H2.255a7.03 7.03 0 0 0 3.072 2.472M3.82 11a13.7 13.7 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7.03 7.03 0 0 0 13.745 12H11.91a9.3 9.3 0 0 1-.64 1.539 7 7 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855q.26-.487.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.7 13.7 0 0 1-.312 2.5m2.802-3.5a7 7 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.03 7.03 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a8 8 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/>
-                        </svg>
-                        <span class="font-inter font-medium">Learn more about the Aquiles ecosystem</span>
-                    </a>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+                <div id="indicesList" class="bg-gray-50 rounded-xl p-4 font-mono text-sm">
+                    Loading indices...
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="border-b border-gray-200 mb-8">
+                <nav class="-mb-px flex space-x-8">
+                    <button onclick="switchTab('create-index')" id="tab-create-index" class="tab-button py-2 px-1 border-b-2 font-medium text-sm">
+                        Create Index
+                    </button>
+                    <button onclick="switchTab('add-text')" id="tab-add-text" class="tab-button py-2 px-1 border-b-2 font-medium text-sm">
+                        Add Text
+                    </button>
+                    <button onclick="switchTab('query')" id="tab-query" class="tab-button py-2 px-1 border-b-2 font-medium text-sm">
+                        Query RAG
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Create Index Tab -->
+            <div id="create-index-tab" class="tab-content">
+                <h3 class="text-lg font-bold mb-4 text-gray-900 font-lora">Create New Index</h3>
+                <form id="createIndexForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="indexName" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Index Name</label>
+                            <input type="text" id="indexName" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                        </div>
+                        <div>
+                            <label for="embeddingsDim" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Embeddings Dimension</label>
+                            <input type="number" id="embeddingsDim" value="1536" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            <p class="text-xs text-gray-500 mt-1 font-inter">Use 1536 for text-embedding-3-small</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="dtype" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Data Type</label>
+                            <select id="dtype" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <option value="FLOAT32">FLOAT32</option>
+                                <option value="FLOAT64">FLOAT64</option>
+                                <option value="FLOAT16">FLOAT16</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="deleteIfExists" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                <span class="text-sm font-medium text-gray-700 font-inter">Delete if exists</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                        Create Index
+                    </button>
+                </form>
+            </div>
+
+            <!-- Add Text Tab -->
+            <div id="add-text-tab" class="tab-content hidden">
+                <h3 class="text-lg font-bold mb-4 text-gray-900 font-lora">Add Text to RAG</h3>
+                <form id="addTextForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="selectIndex" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Select Index</label>
+                            <select id="selectIndex" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <option value="">Select an index...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="chunkName" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Chunk Name</label>
+                            <input type="text" id="chunkName" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="e.g., Document Chapter 1">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="rawText" class="block text-sm font-medium text-gray-700 mb-2 font-inter">
+                            Text Content 
+                            <span class="text-gray-500 text-xs">(<span id="wordCount">0</span>/300 words)</span>
+                        </label>
+                        <textarea id="rawText" rows="6" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm resize-none" placeholder="Enter your text here (max 300 words)..."></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="chunkSize" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Chunk Size (tokens)</label>
+                            <input type="number" id="chunkSize" value="1024" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                        </div>
+                        <div>
+                            <label for="addTextDtype" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Data Type</label>
+                            <select id="addTextDtype" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <option value="FLOAT32">FLOAT32</option>
+                                <option value="FLOAT64">FLOAT64</option>
+                                <option value="FLOAT16">FLOAT16</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                        Generate Embeddings & Add to RAG
+                    </button>
+                </form>
+            </div>
+
+            <!-- Query Tab -->
+            <div id="query-tab" class="tab-content hidden">
+                <h3 class="text-lg font-bold mb-4 text-gray-900 font-lora">Query RAG</h3>
+                <form id="queryForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="queryIndex" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Select Index</label>
+                            <select id="queryIndex" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <option value="">Select an index...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="queryDtype" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Data Type</label>
+                            <select id="queryDtype" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <option value="FLOAT32">FLOAT32</option>
+                                <option value="FLOAT64">FLOAT64</option>
+                                <option value="FLOAT16">FLOAT16</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="queryText" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Query Text</label>
+                        <textarea id="queryText" rows="3" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm resize-none" placeholder="Enter your query..."></textarea>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="topK" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Top K Results</label>
+                            <input type="number" id="topK" value="5" min="1" max="20" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                        </div>
+                        <div>
+                            <label for="cosineThreshold" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Cosine Distance Threshold</label>
+                            <input type="number" id="cosineThreshold" value="0.6" step="0.1" min="0" max="2" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                        Generate Embeddings & Query
+                    </button>
+                </form>
+
+                <!-- Query Results -->
+                <div id="queryResults" class="hidden mt-8">
+                    <h4 class="text-lg font-bold mb-4 text-gray-900 font-lora">Query Results</h4>
+                    <div id="resultsContainer" class="space-y-4">
+                        <!-- Results will be populated here -->
+                    </div>
                 </div>
             </div>
         </div>
-    </footer>
+    </div>
+</div>
 
-    <script>
-        // Toggle configuration panel
-        function toggleConfig() {
-            const panel = document.getElementById('configPanel');
-            panel.classList.toggle('hidden');
-        }
-
-        // Show status message
-        function showStatus(message, isError = false) {
-            const statusDiv = document.getElementById('statusMessage');
-            statusDiv.className = `mb-4 p-4 rounded-xl ${isError ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`;
-            statusDiv.textContent = message;
-            statusDiv.classList.remove('hidden');
-            
-            setTimeout(() => {
-                statusDiv.classList.add('hidden');
-            }, 5000);
-        }
-
-        // Add user row
-        function addUser(username = '', password = '') {
-            const usersContainer = document.getElementById('usersContainer');
-            
-            const userRow = document.createElement('div');
-            userRow.className = 'flex space-x-3 items-center p-4 bg-gray-50 rounded-xl';
-            userRow.innerHTML = `
-                <div class="flex-1">
-                    <input 
-                        type="text" 
-                        placeholder="Username" 
-                        value="${username}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-inter text-sm"
-                        data-field="username"
-                    >
-                </div>
-                <div class="flex-1">
-                    <input 
-                        type="password" 
-                        placeholder="Password" 
-                        value="${password}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-inter text-sm"
-                        data-field="password"
-                    >
-                </div>
-                <button 
-                    type="button" 
-                    onclick="removeUser(this)" 
-                    class="text-red-500 hover:text-red-700 transition-colors p-2"
-                    title="Remove user"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+<!-- Footer -->
+<footer class="relative z-10 w-full py-8 mt-auto">
+    <div class="container mx-auto px-6">
+        <div class="border-t border-gray-200 pt-8">
+            <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8">
+                <!-- GitHub Link -->
+                <a href="https://github.com/Aquiles-ai/Aquiles-RAG" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
+                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8"/>
                     </svg>
-                </button>
-            `;
-            
-            usersContainer.appendChild(userRow);
-        }
-
-        // Remove user row
-        function removeUser(button) {
-            const usersContainer = document.getElementById('usersContainer');
-            if (usersContainer.children.length > 1) {
-                button.parentElement.remove();
-            }
-        }
-
-        // Collect users data
-        function collectUsersData() {
-            const usersContainer = document.getElementById('usersContainer');
-            const users = [];
-            
-            Array.from(usersContainer.children).forEach(userRow => {
-                const username = userRow.querySelector('[data-field="username"]').value.trim();
-                const password = userRow.querySelector('[data-field="password"]').value.trim();
+                    <span class="font-inter font-medium">Aquiles-RAG</span>
+                </a>
                 
-                if (username && password) {
-                    users.push({ username, password });
-                }
+                <!-- FastAPI Docs Link -->
+                <a href="/docs" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
+                        <path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5M5 8a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1zm0 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1z"/>
+                        <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/>
+                    </svg>
+                    <span class="font-inter font-medium">Automatic FastAPI documentation</span>
+                </a>
+                
+                <!-- Web Link -->
+                <a href="https://aquiles.vercel.app" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
+                        <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m7.5-6.923c-.67.204-1.335.82-1.887 1.855A8 8 0 0 0 5.145 4H7.5zM4.09 4a9.3 9.3 0 0 1 .64-1.539 7 7 0 0 1 .597-.933A7.03 7.03 0 0 0 2.255 4zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a7 7 0 0 0-.656 2.5zM4.847 5a12.5 12.5 0 0 0-.338 2.5H7.5V5zM8.5 5v2.5h2.99a12.5 12.5 0 0 0-.337-2.5zM4.51 8.5a12.5 12.5 0 0 0 .337 2.5H7.5V8.5zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5zM5.145 12q.208.58.468 1.068c.552 1.035 1.218 1.65 1.887 1.855V12zm.182 2.472a7 7 0 0 1-.597-.933A9.3 9.3 0 0 1 4.09 12H2.255a7.03 7.03 0 0 0 3.072 2.472M3.82 11a13.7 13.7 0 0 1-.312-2.5h-2.49c.062.89.291 1.733.656 2.5zm6.853 3.472A7.03 7.03 0 0 0 13.745 12H11.91a9.3 9.3 0 0 1-.64 1.539 7 7 0 0 1-.597.933M8.5 12v2.923c.67-.204 1.335-.82 1.887-1.855q.26-.487.468-1.068zm3.68-1h2.146c.365-.767.594-1.61.656-2.5h-2.49a13.7 13.7 0 0 1-.312 2.5m2.802-3.5a7 7 0 0 0-.656-2.5H12.18c.174.782.282 1.623.312 2.5zM11.27 2.461c.247.464.462.98.64 1.539h1.835a7.03 7.03 0 0 0-3.072-2.472c.218.284.418.598.597.933M10.855 4a8 8 0 0 0-.468-1.068C9.835 1.897 9.17 1.282 8.5 1.077V4z"/>
+                    </svg>
+                    <span class="font-inter font-medium">Learn more about the Aquiles ecosystem</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script type="module">
+    import OpenAI from "https://cdn.jsdelivr.net/npm/openai@5.10.2/+esm";
+    
+    let openai = null;
+    let currentConfig = {};
+    let availableApiKeys = [];
+
+    // Initialize OpenAI client
+    async function initializeOpenAI() {
+        return new Promise((resolve, reject) => {
+            if (openai) {
+                resolve(openai);
+                return;
+            }
+            
+            // Show modal and wait for user input
+            document.getElementById('openaiModal').classList.remove('hidden');
+            
+            // Store resolve/reject for later use
+            window.openaiResolve = resolve;
+            window.openaiReject = reject;
+        });
+    }
+
+    // Generate embeddings
+    async function getEmbedding(text) {
+        try {
+            const client = await initializeOpenAI();
+            const embedding = await client.embeddings.create({
+                model: "text-embedding-3-small",
+                input: text,
+                encoding_format: "float",
             });
+            return embedding.data[0].embedding;
+        } catch (error) {
+            console.error("Error generating embedding:", error);
+            throw error;
+        }
+    }
+
+    // Show status message
+    function showPlaygroundStatus(message, isError = false) {
+        if (!isError) {
+            // Show success modal instead of status message
+            showSuccessModal(message);
+            return;
+        }
+        
+        // Keep error messages as status messages
+        const statusDiv = document.getElementById('playgroundStatus');
+        statusDiv.className = `mb-6 p-4 rounded-xl bg-red-50 text-red-700 border border-red-200`;
+        statusDiv.textContent = message;
+        statusDiv.classList.remove('hidden');
+        
+        setTimeout(() => {
+            statusDiv.classList.add('hidden');
+        }, 5000);
+    }
+
+    // API request helper
+    async function apiRequest(endpoint, method = 'GET', data = null) {
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+
+        // Auto-complete API key if available
+        if (availableApiKeys.length > 0 && data && method !== 'GET') {
+            headers['X-API-Key'] = availableApiKeys[0]; // Use first available API key
+        }
+
+        const config = {
+            method,
+            headers,
+        };
+
+        if (data) {
+            config.body = JSON.stringify(data);
+        }
+
+        const response = await fetch(endpoint, config);
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        return response.json();
+    }
+
+    // Load configuration and indices
+    async function loadConfig() {
+        try {
+            const config = await apiRequest('/ui/configs');
+            currentConfig = config;
+            availableApiKeys = config.allows_api_keys || [];
             
-            return users;
-        }
-
-        // Load current configuration
-        async function loadConfig() {
-            try {
-                const response = await fetch('/ui/configs');
-                if (!response.ok) throw new Error('Failed to load configuration');
-                
-                const config = await response.json();
-                
-                // Populate existing form fields
-                document.getElementById('local').checked = config.local || false;
-                document.getElementById('host').value = config.host || '';
-                document.getElementById('port').value = config.port || '';
-                document.getElementById('usernanme').value = config.usernanme || '';
-                document.getElementById('password').value = config.password || '';
-                document.getElementById('cluster_mode').checked = config.cluster_mode || false;
-                document.getElementById('tls_mode').checked = config.tls_mode || false;
-                document.getElementById('ssl_cert').value = config.ssl_cert || '';
-                document.getElementById('ssl_key').value = config.ssl_key || '';
-                document.getElementById('ssl_ca').value = config.ssl_ca || '';
-                
-                // Populate API keys
-                const apiKeys = config.allows_api_keys || [];
-                document.getElementById('allows_api_keys').value = apiKeys.join('\n');
-                
-                // Populate users
-                const users = config.allows_users || [];
-                const usersContainer = document.getElementById('usersContainer');
-                usersContainer.innerHTML = '';
-                
-                if (users.length === 0) {
-                    addUser(); // Add one empty user row by default
-                } else {
-                    users.forEach(user => {
-                        addUser(user.username, user.password);
-                    });
-                }
-                
-                // Toggle SSL fields visibility
-                toggleSSLFields();
-                
-                showStatus('Configuration loaded successfully');
-            } catch (error) {
-                showStatus('Error loading configuration: ' + error.message, true);
-            }
-        }
-
-        // Save configuration
-        async function saveConfig(formData) {
-            try {
-                const response = await fetch('/ui/configs', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Failed to save configuration');
-                }
-                
-                const result = await response.json();
-                showStatus('Configuration saved successfully');
-                return result;
-            } catch (error) {
-                showStatus('Error saving configuration: ' + error.message, true);
-                throw error;
-            }
-        }
-
-        // Toggle SSL fields visibility
-        function toggleSSLFields() {
-            const tlsMode = document.getElementById('tls_mode').checked;
-            const sslFields = document.getElementById('sslFields');
+            // Populate form fields
+            document.getElementById('local').checked = config.local || false;
+            document.getElementById('host').value = config.host || '';
+            document.getElementById('port').value = config.port || '';
+            document.getElementById('usernanme').value = config.usernanme || '';
+            document.getElementById('password').value = config.password || '';
+            document.getElementById('cluster_mode').checked = config.cluster_mode || false;
+            document.getElementById('tls_mode').checked = config.tls_mode || false;
+            document.getElementById('ssl_cert').value = config.ssl_cert || '';
+            document.getElementById('ssl_key').value = config.ssl_key || '';
+            document.getElementById('ssl_ca').value = config.ssl_ca || '';
             
-            if (tlsMode) {
-                sslFields.classList.remove('hidden');
+            // Populate API keys
+            const apiKeys = config.allows_api_keys || [];
+            document.getElementById('allows_api_keys').value = apiKeys.join('\n');
+            
+            // Populate users
+            const users = config.allows_users || [];
+            const usersContainer = document.getElementById('usersContainer');
+            usersContainer.innerHTML = '';
+            
+            if (users.length === 0) {
+                addUser();
             } else {
-                sslFields.classList.add('hidden');
+                users.forEach(user => {
+                    addUser(user.username, user.password);
+                });
             }
+            
+            // Update indices
+            updateIndicesList(config.indices || []);
+            updateIndexSelects(config.indices || []);
+            
+            toggleSSLFields();
+            showStatus('Configuration loaded successfully');
+        } catch (error) {
+            showStatus('Error loading configuration: ' + error.message, true);
         }
+    }
 
-        // Form submission handler
-        document.getElementById('configForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Collect API keys
-            const apiKeysText = document.getElementById('allows_api_keys').value.trim();
-            const apiKeys = apiKeysText ? apiKeysText.split('\n').map(key => key.trim()).filter(key => key) : [];
-            
-            // Collect users
-            const users = collectUsersData();
+    // Update indices list display
+    function updateIndicesList(indices) {
+        const indicesList = document.getElementById('indicesList');
+        if (indices.length === 0) {
+            indicesList.textContent = 'No indices found. Create one to get started.';
+            indicesList.className = 'bg-gray-50 rounded-xl p-4 font-mono text-sm text-gray-500';
+        } else {
+            indicesList.innerHTML = indices.map(index => 
+                `<span class="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm mr-2 mb-2">${index}</span>`
+            ).join('');
+            indicesList.className = 'bg-gray-50 rounded-xl p-4';
+        }
+    }
+
+    // Update index select dropdowns
+    function updateIndexSelects(indices) {
+        const selects = ['selectIndex', 'queryIndex'];
+        selects.forEach(selectId => {
+            const select = document.getElementById(selectId);
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">Select an index...</option>';
+            indices.forEach(index => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = index;
+                if (index === currentValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        });
+    }
+
+    // Refresh indices
+    window.refreshIndices = async function() {
+        try {
+            const config = await apiRequest('/ui/configs');
+            updateIndicesList(config.indices || []);
+            updateIndexSelects(config.indices || []);
+            showPlaygroundStatus('Indices refreshed successfully');
+        } catch (error) {
+            showPlaygroundStatus('Error refreshing indices: ' + error.message, true);
+        }
+    };
+
+    // Tab switching
+    window.switchTab = function(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.add('hidden');
+        });
+        
+        // Remove active class from all tab buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('border-purple-500', 'text-purple-600');
+            button.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        });
+        
+        // Show selected tab
+        document.getElementById(tabName + '-tab').classList.remove('hidden');
+        
+        // Add active class to selected tab button
+        const activeButton = document.getElementById('tab-' + tabName);
+        activeButton.classList.add('border-purple-500', 'text-purple-600');
+        activeButton.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+    };
+
+    // Word count for text input
+    function updateWordCount() {
+        const text = document.getElementById('rawText').value;
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        const wordCountSpan = document.getElementById('wordCount');
+        wordCountSpan.textContent = words;
+        
+        if (words > 300) {
+            wordCountSpan.className = 'text-red-600 font-bold';
+            // Truncate to 300 words
+            const truncated = text.trim().split(/\s+/).slice(0, 300).join(' ');
+            document.getElementById('rawText').value = truncated;
+            wordCountSpan.textContent = '300';
+        } else {
+            wordCountSpan.className = '';
+        }
+    }
+
+    // Create Index Form
+    document.getElementById('createIndexForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        try {
+            showPlaygroundStatus('Creating index...');
             
             const formData = {
-                local: document.getElementById('local').checked,
-                host: document.getElementById('host').value || null,
-                port: parseInt(document.getElementById('port').value) || null,
-                usernanme: document.getElementById('usernanme').value || null,
-                password: document.getElementById('password').value || null,
-                cluster_mode: document.getElementById('cluster_mode').checked,
-                tls_mode: document.getElementById('tls_mode').checked,
-                ssl_cert: document.getElementById('ssl_cert').value || null,
-                ssl_key: document.getElementById('ssl_key').value || null,
-                ssl_ca: document.getElementById('ssl_ca').value || null,
-                allows_api_keys: apiKeys.length > 0 ? apiKeys : null,
-                allows_users: users.length > 0 ? users : null,
+                indexname: document.getElementById('indexName').value,
+                embeddings_dim: parseInt(document.getElementById('embeddingsDim').value),
+                dtype: document.getElementById('dtype').value,
+                delete_the_index_if_it_exists: document.getElementById('deleteIfExists').checked
             };
             
-            // Remove null values to match the backend's exclude_none=True
-            Object.keys(formData).forEach(key => {
-                if (formData[key] === null || formData[key] === '') {
-                    delete formData[key];
-                }
-            });
+            await apiRequest('/create/index', 'POST', formData);
+            showPlaygroundStatus('Index created successfully!');
             
-            await saveConfig(formData);
-        });
+            // Refresh indices
+            await refreshIndices();
+            
+            // Reset form
+            document.getElementById('createIndexForm').reset();
+            document.getElementById('embeddingsDim').value = '1536';
+            
+        } catch (error) {
+            showPlaygroundStatus('Error creating index: ' + error.message, true);
+        }
+    });
 
-        // TLS mode change handler
-        document.getElementById('tls_mode').addEventListener('change', toggleSSLFields);
+    // Add Text Form
+    document.getElementById('addTextForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        try {
+            showPlaygroundStatus('Generating embeddings and adding to RAG...');
+            
+            const text = document.getElementById('rawText').value;
+            const embeddings = await getEmbedding(text);
+            
+            const formData = {
+                index: document.getElementById('selectIndex').value,
+                name_chunk: document.getElementById('chunkName').value,
+                dtype: document.getElementById('addTextDtype').value,
+                chunk_size: parseInt(document.getElementById('chunkSize').value),
+                raw_text: text,
+                embeddings: embeddings
+            };
+            
+            const result = await apiRequest('/rag/create', 'POST', formData);
+            showPlaygroundStatus(`Text added successfully! Key: ${result.key}`);
+            
+            // Reset form
+            document.getElementById('addTextForm').reset();
+            document.getElementById('chunkSize').value = '1024';
+            updateWordCount();
+            
+        } catch (error) {
+            showPlaygroundStatus('Error adding text: ' + error.message, true);
+        }
+    });
 
-        // Load configuration on page load
-        document.addEventListener('DOMContentLoaded', loadConfig);
+    // Query Form
+    document.getElementById('queryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        try {
+            showPlaygroundStatus('Generating embeddings and querying...');
+            
+            const queryText = document.getElementById('queryText').value;
+            const embeddings = await getEmbedding(queryText);
+            
+            const formData = {
+                index: document.getElementById('queryIndex').value,
+                embeddings: embeddings,
+                dtype: document.getElementById('queryDtype').value,
+                top_k: parseInt(document.getElementById('topK').value),
+                cosine_distance_threshold: parseFloat(document.getElementById('cosineThreshold').value) || null
+            };
+            
+            const result = await apiRequest('/rag/query-rag', 'POST', formData);
+            showPlaygroundStatus(`Query completed! Found ${result.total} results.`);
+            
+            // Display results
+            displayQueryResults(result.results);
+            
+        } catch (error) {
+            showPlaygroundStatus('Error querying: ' + error.message, true);
+        }
+    });
 
-        // Close panel when clicking outside
-        document.getElementById('configPanel').addEventListener('click', (e) => {
-            if (e.target.id === 'configPanel') {
-                toggleConfig();
+    // Display query results
+    function displayQueryResults(results) {
+        const resultsContainer = document.getElementById('resultsContainer');
+        const queryResults = document.getElementById('queryResults');
+        
+        if (results.length === 0) {
+            resultsContainer.innerHTML = '<p class="text-gray-500 font-inter">No results found.</p>';
+        } else {
+            resultsContainer.innerHTML = results.map((result, index) => `
+                <div class="border border-gray-200 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h5 class="font-bold text-gray-900 font-lora">${result.name_chunk}</h5>
+                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-mono">
+                            Score: ${result.score.toFixed(4)}
+                        </span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2 font-inter">
+                        Chunk ID: ${result.chunk_id} | Size: ${result.chunk_size} tokens
+                    </div>
+                    <div class="text-gray-800 font-inter text-sm leading-relaxed">
+                        ${result.raw_text.length > 200 ? result.raw_text.substring(0, 200) + '...' : result.raw_text}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        queryResults.classList.remove('hidden');
+    }
+
+    // Configuration panel functions (keeping existing ones)
+    window.toggleConfig = function() {
+        const panel = document.getElementById('configPanel');
+        panel.classList.toggle('hidden');
+    };
+
+    window.showStatus = function(message, isError = false) {
+        const statusDiv = document.getElementById('statusMessage');
+        statusDiv.className = `mb-4 p-4 rounded-xl ${isError ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`;
+        statusDiv.textContent = message;
+        statusDiv.classList.remove('hidden');
+        
+        setTimeout(() => {
+            statusDiv.classList.add('hidden');
+        }, 5000);
+    };
+
+    window.addUser = function(username = '', password = '') {
+        const usersContainer = document.getElementById('usersContainer');
+        
+        const userRow = document.createElement('div');
+        userRow.className = 'flex space-x-3 items-center p-4 bg-gray-50 rounded-xl';
+        userRow.innerHTML = `
+            <div class="flex-1">
+                <input 
+                    type="text" 
+                    placeholder="Username" 
+                    value="${username}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-inter text-sm"
+                    data-field="username"
+                >
+            </div>
+            <div class="flex-1">
+                <input 
+                    type="password" 
+                    placeholder="Password" 
+                    value="${password}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-inter text-sm"
+                    data-field="password"
+                >
+            </div>
+            <button 
+                type="button" 
+                onclick="removeUser(this)" 
+                class="text-red-500 hover:text-red-700 transition-colors p-2"
+                title="Remove user"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+                </svg>
+            </button>
+        `;
+        
+        usersContainer.appendChild(userRow);
+    };
+
+    window.removeUser = function(button) {
+        const usersContainer = document.getElementById('usersContainer');
+        if (usersContainer.children.length > 1) {
+            button.parentElement.remove();
+        }
+    };
+
+    function collectUsersData() {
+        const usersContainer = document.getElementById('usersContainer');
+        const users = [];
+        
+        Array.from(usersContainer.children).forEach(userRow => {
+            const username = userRow.querySelector('[data-field="username"]').value.trim();
+            const password = userRow.querySelector('[data-field="password"]').value.trim();
+            
+            if (username && password) {
+                users.push({ username, password });
             }
         });
-    </script>
+        
+        return users;
+    }
 
-    <style>
-        /* Smooth scrolling */
-        html {
-            scroll-behavior: smooth;
+    async function saveConfig(formData) {
+        try {
+            const response = await fetch('/ui/configs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Failed to save configuration');
+            }
+            
+            const result = await response.json();
+            showStatus('Configuration saved successfully');
+            return result;
+        } catch (error) {
+            showStatus('Error saving configuration: ' + error.message, true);
+            throw error;
+        }
+    }
+
+    function toggleSSLFields() {
+        const tlsMode = document.getElementById('tls_mode').checked;
+        const sslFields = document.getElementById('sslFields');
+        
+        if (tlsMode) {
+            sslFields.classList.remove('hidden');
+        } else {
+            sslFields.classList.add('hidden');
+        }
+    }
+
+    // Configuration form submission
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const apiKeysText = document.getElementById('allows_api_keys').value.trim();
+        const apiKeys = apiKeysText ? apiKeysText.split('\n').map(key => key.trim()).filter(key => key) : [];
+        
+        const users = collectUsersData();
+        
+        const formData = {
+            local: document.getElementById('local').checked,
+            host: document.getElementById('host').value || null,
+            port: parseInt(document.getElementById('port').value) || null,
+            usernanme: document.getElementById('usernanme').value || null,
+            password: document.getElementById('password').value || null,
+            cluster_mode: document.getElementById('cluster_mode').checked,
+            tls_mode: document.getElementById('tls_mode').checked,
+            ssl_cert: document.getElementById('ssl_cert').value || null,
+            ssl_key: document.getElementById('ssl_key').value || null,
+            ssl_ca: document.getElementById('ssl_ca').value || null,
+            allows_api_keys: apiKeys.length > 0 ? apiKeys : null,
+            allows_users: users.length > 0 ? users : null,
+        };
+        
+        Object.keys(formData).forEach(key => {
+            if (formData[key] === null || formData[key] === '') {
+                delete formData[key];
+            }
+        });
+        
+        await saveConfig(formData);
+    });
+
+    // Event listeners
+    document.getElementById('tls_mode').addEventListener('change', toggleSSLFields);
+    document.getElementById('rawText').addEventListener('input', updateWordCount);
+    
+    document.getElementById('configPanel').addEventListener('click', (e) => {
+        if (e.target.id === 'configPanel') {
+            toggleConfig();
+        }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        loadConfig();
+        switchTab('create-index');
+        updateWordCount();
+    });
+
+    // Success modal functions
+    window.showSuccessModal = function(message) {
+        document.getElementById('successMessage').textContent = message;
+        document.getElementById('successModal').classList.remove('hidden');
+    };
+
+    window.closeSuccessModal = function() {
+        document.getElementById('successModal').classList.add('hidden');
+    };
+
+    // Close modal when clicking outside
+    document.getElementById('successModal').addEventListener('click', (e) => {
+        if (e.target.id === 'successModal') {
+            closeSuccessModal();
+        }
+    });
+
+    // OpenAI Modal functions
+    window.confirmOpenAIKey = function() {
+        const apiKey = document.getElementById('openaiApiKey').value.trim();
+        
+        if (!apiKey) {
+            alert('Please enter a valid API key');
+            return;
         }
         
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
+        if (!apiKey.startsWith('sk-')) {
+            alert('OpenAI API keys should start with "sk-"');
+            return;
         }
         
-        ::-webkit-scrollbar-track {
-            background: #f5f5f5;
+        try {
+            openai = new OpenAI({
+                apiKey,
+                dangerouslyAllowBrowser: true,
+            });
+            
+            document.getElementById('openaiModal').classList.add('hidden');
+            document.getElementById('openaiApiKey').value = '';
+            
+            if (window.openaiResolve) {
+                window.openaiResolve(openai);
+            }
+        } catch (error) {
+            alert('Error initializing OpenAI client: ' + error.message);
+            if (window.openaiReject) {
+                window.openaiReject(error);
+            }
         }
+    };
+
+    window.cancelOpenAIModal = function() {
+        document.getElementById('openaiModal').classList.add('hidden');
+        document.getElementById('openaiApiKey').value = '';
         
-        ::-webkit-scrollbar-thumb {
-            background: #8b5cf6;
-            border-radius: 4px;
+        if (window.openaiReject) {
+            window.openaiReject(new Error('User cancelled API key input'));
         }
-        
-        ::-webkit-scrollbar-thumb:hover {
-            background: #7c3aed;
+    };
+
+    // Close modal when clicking outside
+    document.getElementById('openaiModal').addEventListener('click', (e) => {
+        if (e.target.id === 'openaiModal') {
+            cancelOpenAIModal();
         }
-    </style>
+    });
+
+    // Handle Enter key in API key input
+    document.getElementById('openaiApiKey').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            confirmOpenAIKey();
+        }
+    });
+</script>
+
+<style>
+    html {
+        scroll-behavior: smooth;
+    }
+    
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f5f5f5;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #8b5cf6;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #7c3aed;
+    }
+
+    .tab-button {
+        transition: all 0.2s ease;
+    }
+</style>
 </body>
 </html>
