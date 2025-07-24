@@ -35,7 +35,6 @@
 * 💻 **Integrated CLI**: Configure and serve with built‑in commands.
 * 🧩 **Extensible**: Ready to integrate into ML pipelines or microservices.
 
----
 
 ## 🛠 Tech Stack
 
@@ -49,7 +48,6 @@
 * [Requests](https://docs.python-requests.org/) (Python client)
 * [Platformdirs](https://github.com/platformdirs/platformdirs) (config management)
 
----
 
 ## ⚙️ Requirements
 
@@ -291,7 +289,6 @@ Use it to:
 * Test `/create/index`, `/rag/create`, `/rag/query-rag`
 * Explore protected Swagger UI & ReDoc docs
 
----
 
 ## 🏗 Architecture
 
