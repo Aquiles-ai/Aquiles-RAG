@@ -1,3 +1,9 @@
+"""
+This is an example of a file that will be used to deploy Aquiles-RAG in 
+providers like Render, you have to create a requirements.txt with "aquiles-rag" as 
+the only module to install, and in the command to launch the service 
+you have to use "quiles-rag deploy --host "0.0.0.0" --port 5500 your_config_file.py"
+"""
 from aquiles.deploy_config import DeployConfig, gen_configs_file
 from aquiles.configs import AllowedUser
 
