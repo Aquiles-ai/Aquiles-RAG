@@ -297,8 +297,16 @@ async def login_ui(request: Request):
     return templates.TemplateResponse("login_ui.html", {"request": request})
 
 @app.get("/ui/configs")
-async def get_configs(user: str = Depends(get_current_user)):
+async def get_configs(request: Request, user: str = Depends(get_current_user)):
     try:
+        r: Union[Redis, RedisCluster] = request.app.state.redis
+
+        try:
+            indices = await r.execute_command("FT._LIST")
+            indices = [i.decode() if isinstance(i, bytes) else i for i in indices]
+        except redis.RedisError:
+            indices = []
+
         configs = load_aquiles_config()
         return {"local": configs["local"],
                 "host": configs["host"],
@@ -310,7 +318,8 @@ async def get_configs(user: str = Depends(get_current_user)):
                 "ssl_key": configs["ssl_key"],
                 "ssl_ca": configs["ssl_ca"],
                 "allows_api_keys": configs["allows_api_keys"],
-                "allows_users": configs["allows_users"]
+                "allows_users": configs["allows_users"],
+                "indices": indices
                 }
     except HTTPException:
         return RedirectResponse(url="/login/ui", status_code=302)
