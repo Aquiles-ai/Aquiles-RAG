@@ -47,7 +47,7 @@ if __name__ == "__main__":
     text_2 = "FastAPI is based on Starlette"
 
     def run_test(text, api_key=None):
-        base_url = 'http://192.168.1.20:5500'
+        base_url = 'https://aquiles-deploy.onrender.com'
         client = OpenAI()
         embedding = client.embeddings.create(
             input=text,

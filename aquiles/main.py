@@ -47,7 +47,6 @@ init_aquiles_config()
 class SendRAG(BaseModel):
     index: str = Field(..., description="Index name in Redis")
     name_chunk: str = Field(..., description="Human-readable chunk label or name")
-    chunk_id: PositiveInt = Field(1, description="Sequential ID of the chunk within the index")
     dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = Field(
         "FLOAT32",
         description="Embedding data type. Choose from FLOAT32, FLOAT64, or FLOAT16"
@@ -181,18 +180,22 @@ async def send_rag(q: SendRAG, request: Request):
     emb_array = np.array(q.embeddings, dtype=dtype)
     emb_bytes = emb_array.tobytes()
 
-    key = f"{q.index}:{q.chunk_id}"
+    new_id = await r.incr(f"{q.index}:next_id")
+
+    key = f"{q.index}:{new_id}"
 
     mapping = {
         "name_chunk":   q.name_chunk,
-        "chunk_id":     q.chunk_id,
+        "chunk_id":     new_id,
         "chunk_size":   q.chunk_size,
         "raw_text":     q.raw_text,
         "embedding":    emb_bytes,
     }
 
     try:
-        r.hset(key, mapping=mapping)
+        print(f"[DEBUG] Guardando chunk → key={key}, size emb_bytes={len(emb_bytes)} bytes")
+        await r.hset(key, mapping=mapping)
+        print(f"[DEBUG] HSET OK para key={key}")
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error saving chunk: {e}")
@@ -229,7 +232,9 @@ async def query_rag(q: QueryRAG, request: Request):
     except Exception as e:
         raise HTTPException(500, f"Search error: {e}")
 
+    print(res)
     docs = res.docs
+    print(docs)
     if q.cosine_distance_threshold is not None:
         docs = [
             d for d in docs

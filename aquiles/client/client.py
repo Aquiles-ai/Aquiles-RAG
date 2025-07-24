@@ -115,13 +115,12 @@ class AquilesRAG:
                 chunks = chunk_text_by_words(raw_text)
                 responses = []
 
-                for idx, chunk in enumerate(chunks):
+                for idx, chunk in enumerate(chunks, start=1):
                     emb = embedding_func(chunk)
 
                     payload = {
                         "index": index,
                         "name_chunk": f"{name_chunk}_{idx}",
-                        "chunk_id": idx,
                         "dtype": dtype,
                         "chunk_size": 1024,
                         "raw_text": chunk,
