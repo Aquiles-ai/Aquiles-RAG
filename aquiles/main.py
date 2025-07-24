@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 
     await app.state.redis.aclose()
 
-app = FastAPI(title="Aquiles-RAG", lifespan=lifespan)
+app = FastAPI(title="Aquiles-RAG", debug=True, lifespan=lifespan)
 
 package_dir = pathlib.Path(__file__).parent.absolute()
 static_dir = os.path.join(package_dir, "static")
@@ -133,7 +133,7 @@ async def create_index(q: CreateIndex, request: Request):
                 "TYPE": q.dtype,
                 "DIM": q.embeddings_dim,
                 "DISTANCE_METRIC": "COSINE",
-                "INITIAL_CAP": 1000,
+                "INITIAL_CAP": 400,
                 "M": 16,
                 "EF_CONSTRUCTION": 200,
                 "EF_RUNTIME": 100,
@@ -150,6 +150,7 @@ async def create_index(q: CreateIndex, request: Request):
     try:
         await r.ft(q.indexname).create_index(fields=schema, definition=definition)
     except Exception as e:
+        print(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating index: {e}"
@@ -356,6 +357,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 if __name__ == "__main__":
     import uvicorn
