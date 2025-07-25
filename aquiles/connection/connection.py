@@ -23,14 +23,14 @@ async def get_connection():
 
     # 1) Local cluster
     if local and cluster:
-        rc = RedisCluster(host=host, port=port, decode_responses=True)
+        rc = RedisCluster(host=host, port=port, decode_responses=True, max_connections=1000000)
         rc.get_nodes()
         await rc.initialize()
         return rc
 
     # 2) Redis standalone local
     if local:
-        return redis.Redis(host=host, port=port, decode_responses=True)
+        return redis.Redis(host=host, port=port, decode_responses=True, max_connections=1000000)
 
     # 3) Remote with TLS/SSL
     if tls_mode:
@@ -46,6 +46,7 @@ async def get_connection():
             password=password or None,
             ssl=True,
             decode_responses=True,
+            max_connections=1000000,
             **ssl_opts
         )
 
@@ -55,5 +56,6 @@ async def get_connection():
         port=port,
         username=username or None,
         password=password or None,
-        decode_responses=True
+        decode_responses=True,
+        max_connections=1000000
     )

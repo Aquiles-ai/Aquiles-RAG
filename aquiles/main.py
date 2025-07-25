@@ -230,6 +230,7 @@ async def query_rag(q: QueryRAG, request: Request):
     try:
         res = await r.ft(q.index).search(knn_q, {"vec": emb_bytes})
     except Exception as e:
+        print(f"Search error: {e}")
         raise HTTPException(500, f"Search error: {e}")
 
     print(res)
