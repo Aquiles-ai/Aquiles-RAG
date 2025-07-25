@@ -314,7 +314,7 @@ The following diagram shows the high‑level architecture of Aquiles‑RAG:
 
 ![Architecture](aquiles/static/diagram.png)
 
-1. **Clients** (CLI, Python SDK, or UI Playground) make asynchronous HTTP requests.
+1. **Clients** (HTTP/HTTPS, Python SDK, or UI Playground) make asynchronous HTTP requests.
 2. **FastAPI Server** acts as the orchestration and business‑logic layer, validating requests and translating them to vector store commands.
 3. **Redis / RedisCluster** serves as the RAG vector store (HASH + HNSW/COSINE search).
 
