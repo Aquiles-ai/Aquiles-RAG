@@ -283,11 +283,29 @@ Access the web UI (with basic auth) at:
 http://localhost:5500/ui
 ```
 
+
 Use it to:
 
 * Edit configurations live
 * Test `/create/index`, `/rag/create`, `/rag/query-rag`
 * Explore protected Swagger UI & ReDoc docs
+
+#### 🚀 Screenshots
+
+1. **Playground Home**  
+   ![Playground Home](aquiles/static/playground.png)
+
+2. **Live Configurations**  
+   ![Live Configurations](aquiles/static/config.png)
+
+3. **Creating an Index**  
+   ![Creating an Index](aquiles/static/create.png)
+
+4. **Adding Data to RAG**  
+   ![Adding Data to RAG](aquiles/static/add.png)
+
+5. **Querying RAG Results**  
+   ![Querying RAG Results](aquiles/static/query.png)
 
 
 ## 🏗 Architecture
