@@ -30,7 +30,7 @@ class AquilesRAG:
             index_name (str): Unique name for the index.
             embeddings_dim (int): Dimensionality of the embeddings to store.
             dtype (str): Numeric data type for index storage (e.g., FLOAT32).
-            delete_if_exists (bool): If True, delete any existing index with the same name before creating.
+            delete_the_index_if_it_exists (bool): If True, delete any existing index with the same name before creating.
 
         Returns:
             str: Server response text indicating success or details.
