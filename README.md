@@ -9,6 +9,11 @@
   🚀 FastAPI • Redis Vector Search • Async • Embedding‑agnostic
 </p>
 
+<p align="center">
+  <a href="https://aquiles-ai.github.io/aqRAG-docs/">📖 Documentation</a>
+</p>
+
+
 
 ## 📑 Table of Contents
 
