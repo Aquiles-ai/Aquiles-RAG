@@ -189,19 +189,19 @@ These options give full flexibility to connect to any Redis topology securely.
 * **Save configs**
 
   ```bash
-  aquiles-rag configs --host 127.0.0.1 --port 6379
+  aquiles-rag configs --host "127.0.0.1" --port 6379
   ```
 
 * **Serve the API**
 
   ```bash
-  aquiles-rag serve --host 0.0.0.0 --port 5500
+  aquiles-rag serve --host "0.0.0.0" --port 5500
   ```
 
 * **Deploy custom config**
 
   ```bash
-  aquiles-rag deploy --host 0.0.0.0 --port 5500 my_config.py
+  aquiles-rag deploy --host "0.0.0.0" --port 5500 my_config.py
   ```
 
 ### REST API
