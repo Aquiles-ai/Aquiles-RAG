@@ -62,8 +62,6 @@
 > ```
 
 
-Here’s an updated **Installation** section that highlights the PyPI package first:
-
 ## 🚀 Installation
 
 ### Via PyPI
