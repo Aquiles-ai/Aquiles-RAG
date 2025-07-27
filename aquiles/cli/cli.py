@@ -66,8 +66,9 @@ def serve(host, port):
 @cli.command("deploy")
 @click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
 @click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
+@click.option("--workers", type=int, default=4, help="Number of uvicorn workers when casting Aquiles-RAG")
 @click.argument("config", type=click.Path(exists=True))
-def deploy_command(host, port, config):
+def deploy_command(host, port, config, workers):
 
     module_name = os.path.splitext(os.path.basename(config))[0]
     spec = importlib.util.spec_from_file_location(module_name, config)
@@ -81,7 +82,7 @@ def deploy_command(host, port, config):
 
     import uvicorn
     from aquiles.main import app
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port, workers=workers)
 
 
 if __name__ == "__main__":
