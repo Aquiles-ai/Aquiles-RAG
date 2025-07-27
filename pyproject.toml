@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aquiles-rag"
-version = "0.2.2"
+version = "0.2.5"
 description = "Aquiles-RAG is a high-performance Retrieval-Augmented Generation (RAG) solution built on Redis. It offers a high-level interface through FastAPI REST APIs"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -48,7 +48,8 @@ dependencies = [
     "passlib[bcrypt]",
     "bcrypt==4.0.1",
     "pydantic[email]",
-    "PyJWT"
+    "PyJWT",
+    "psutil"
 ]
 
 [project.optional-dependencies]

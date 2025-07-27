@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from datetime import timedelta
 from pydantic import BaseModel, Field, PositiveInt
-from typing import List, Optional, Literal, Union
+from typing import List, Optional, Literal, Union, Dict, Any
 import redis
 import numpy as np
 from redis.asyncio import Redis
@@ -20,10 +20,11 @@ from aquiles.connection import get_connection
 from aquiles.configs import AllowedUser
 from aquiles.utils import verify_api_key
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
-from starlette import status
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_401_UNAUTHORIZED
 import os
 import pathlib
 from contextlib import asynccontextmanager
+import psutil
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -113,7 +114,7 @@ async def create_index(q: CreateIndex, request: Request):
 
     if exists and not q.delete_the_index_if_it_exists:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=HTTP_400_BAD_REQUEST,
             detail=f"Index '{q.indexname}' already exists. Set delete_the_index_if_it_exists=true to overwrite."
         )
 
@@ -151,7 +152,7 @@ async def create_index(q: CreateIndex, request: Request):
     except Exception as e:
         print(e)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating index: {e}"
         )
 
@@ -173,7 +174,7 @@ async def send_rag(q: SendRAG, request: Request):
         dtype = np.float64
     else:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"dtype not supported"
         )
 
@@ -197,7 +198,7 @@ async def send_rag(q: SendRAG, request: Request):
         await r.hset(key, mapping=mapping)
         print(f"[DEBUG] HSET OK para key={key}")
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error saving chunk: {e}")
 
     return {"status": "ok", "key": key}
@@ -214,7 +215,7 @@ async def query_rag(q: QueryRAG, request: Request):
         dtype = np.float64
     else:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"dtype not supported"
         )
 
@@ -264,7 +265,7 @@ async def query_rag(q: QueryRAG, request: Request):
 
 @app.exception_handler(HTTPException)
 async def auth_exception_handler(request: Request, exc: HTTPException):
-    if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+    if exc.status_code == HTTP_401_UNAUTHORIZED:
         # pasa la ruta original en el parámetro 'next'
         login_url = f"/login/ui?next={request.url.path}"
         return RedirectResponse(url=login_url, status_code=302)
@@ -275,7 +276,7 @@ async def auth_exception_handler(request: Request, exc: HTTPException):
 @app.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     if not authenticate_user(form_data.username, form_data.password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED,
                             detail="Usuario o contraseña inválidos")
     token = create_access_token(
         username=form_data.username,
@@ -364,6 +365,51 @@ async def protected_redoc_ui(request: Request, user: str = Depends(get_current_u
         openapi_url=app.openapi_url,
         title=f"{app.title} – ReDoc",
     )
+
+@app.get("/status/ram")
+async def get_status_ram(request: Request) -> Dict[str, Any]:
+
+    proc = psutil.Process(os.getpid())
+    mem_info = proc.memory_info()
+    app_metrics = {
+        "process_memory_mb": round(mem_info.rss / 1024**2, 2),
+        "process_cpu_percent": proc.cpu_percent(interval=0.1),
+    }
+
+    try:
+        r: Union[Redis, RedisCluster] = request.app.state.redis
+
+        info = await r.info(section="memory")
+
+        raw_stats = await r.memory_stats()
+        stats = {
+            key.decode() if isinstance(key, (bytes, bytearray)) else key: val
+            for key, val in raw_stats.items()
+        }
+
+        used = info.get("used_memory", 0)
+        maxm = info.get("maxmemory", 0)
+        free_memory_mb = ((maxm - used) / 1024**2) if maxm and used else None
+
+        redis_metrics: Dict[str, Any] = {
+            "memory_info": info,
+            "memory_stats": stats,
+            "free_memory_mb": free_memory_mb,
+        }
+
+    except Exception as e:
+        redis_metrics = {
+            "error": f"Failed to get Redis metrics: {e}"
+        }
+
+    return {
+        "redis": redis_metrics,
+        "app_process": app_metrics,
+    }
+
+@app.get("/status", response_class=HTMLResponse)
+async def status(request: Request):
+    return templates.TemplateResponse("status.html", {"request": request})
 
 app.add_middleware(
     CORSMiddleware,

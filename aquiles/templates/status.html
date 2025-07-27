@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Status Monitor - Aquiles-RAG</title>
+    <link rel="icon" href="static/aq-fav.png" type="image/png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'lora': ['Lora', 'serif'],
+                        'inter': ['Inter', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        cream: {
+                            50: '#fefefe',
+                            100: '#faf9f7',
+                            200: '#f5f4f1',
+                            300: '#f0eeea',
+                        },
+                        purple: {
+                            400: '#a855f7',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'fade-in': 'fadeIn 1s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'pulse-slow': 'pulse 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.2)' },
+                            '100%': { boxShadow: '0 0 40px rgba(139, 92, 246, 0.4)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-cream-50 text-gray-900 min-h-screen overflow-x-hidden font-inter flex flex-col">
+
+<!-- Background Effects -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float"></div>
+    <div class="absolute top-3/4 right-1/4 w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-float" style="animation-delay: 2s;"></div>
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-5 animate-float" style="animation-delay: 4s;"></div>
+</div>
+
+<!-- Auto-refresh Toggle (Top Right) -->
+<div class="fixed top-6 right-6 z-50">
+    <button onclick="toggleAutoRefresh()" id="autoRefreshBtn" class="group relative inline-flex items-center justify-center w-12 h-12 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-lg transition-all duration-300 animate-glow">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="text-purple-600 group-hover:text-purple-700" viewBox="0 0 16 16">
+            <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/>
+            <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/>
+        </svg>
+    </button>
+</div>
+
+<!-- Status Messages -->
+<div id="statusMessage" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-40 hidden">
+    <div class="bg-white rounded-xl shadow-2xl p-4 border border-gray-200 animate-slide-down">
+        <div class="flex items-center space-x-3">
+            <div id="statusIcon" class="flex-shrink-0"></div>
+            <div id="statusText" class="text-sm font-medium font-inter"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center">
+    <div class="animate-fade-in max-w-6xl mx-auto w-full pt-16 md:pt-24">
+        <!-- Title -->
+        <h1 class="text-4xl md:text-6xl font-bold mb-4 leading-tight font-lora">
+            <span class="text-gray-900">System</span><span class="text-purple-600 font-semibold">-Status</span>
+            <span class="text-2xl md:text-3xl text-gray-600 font-light block mt-2">Monitor</span>
+        </h1>
+        
+        <!-- Description -->
+        <p class="text-lg md:text-xl text-gray-700 mb-8 font-light leading-relaxed font-lora max-w-3xl mx-auto">
+            Real-time monitoring of Redis memory usage and application process metrics. Comprehensive system health overview.
+        </p>
+
+        <!-- Loading State -->
+        <div id="loading" class="mb-12">
+            <div class="bg-white rounded-3xl shadow-2xl p-8 text-center max-w-md mx-auto">
+                <div class="animate-pulse-slow">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-purple-100 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-purple-600" viewBox="0 0 16 16">
+                            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2 font-lora">Loading data...</h3>
+                    <p class="text-gray-600 font-inter">Fetching system metrics</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="mb-12 hidden">
+            <div class="bg-white rounded-3xl shadow-2xl p-8 text-center max-w-md mx-auto">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-red-600" viewBox="0 0 16 16">
+                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2 font-lora">Connection Error</h3>
+                <p id="errorMessage" class="text-gray-600 mb-6 font-inter"></p>
+                <button onclick="loadSystemStatus()" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                    Retry
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="content" class="hidden">
+            <!-- Application Process Metrics -->
+            <div class="bg-white rounded-3xl shadow-2xl p-8 text-left max-w-6xl mx-auto mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 font-lora">Application Process</h2>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm text-gray-500 font-inter">
+                            Last updated: <span id="last-updated" class="font-mono">-</span>
+                        </div>
+                        <button onclick="loadSystemStatus()" class="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-inter font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41m-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9"/>
+                                <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5 5 0 0 0 8 3M3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9z"/>
+                            </svg>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Process Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Process Memory -->
+                    <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-medium text-gray-700 font-inter">Process Memory</h3>
+                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-blue-600" viewBox="0 0 16 16">
+                                    <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 13.5V6a1 1 0 0 1-1-1zm2 2v7.5A1.5 1.5 0 0 0 4.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5zm10-2H3v1h10z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900 font-mono" id="process-memory">-</div>
+                        <div class="text-sm text-gray-500 font-inter mt-1">Application RSS memory usage</div>
+                    </div>
+
+                    <!-- Process CPU -->
+                    <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-medium text-gray-700 font-inter">CPU Usage</h3>
+                            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-green-600" viewBox="0 0 16 16">
+                                    <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/>
+                                    <path d="M13.5 1a1.5 1.5 0 0 1 1.5 1.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11A1.5 1.5 0 0 1 2.5 1zm-11-1A2.5 2.5 0 0 0 0 2.5v11A2.5 2.5 0 0 0 2.5 16h11a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 13.5 0z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-bold text-gray-900 font-mono" id="process-cpu">-</div>
+                        <div class="text-sm text-gray-500 font-inter mt-1">Current process CPU utilization</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Redis Memory Overview -->
+            <div id="redis-section" class="bg-white rounded-3xl shadow-2xl p-8 text-left max-w-6xl mx-auto mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6 font-lora">Redis Memory Overview</h2>
+
+                <!-- Redis Error State -->
+                <div id="redis-error" class="hidden border border-red-200 rounded-2xl p-6 bg-red-50">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-red-600" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-red-900 font-lora">Redis Connection Failed</h3>
+                            <p id="redis-error-message" class="text-red-700 font-inter text-sm mt-1"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Redis Success State -->
+                <div id="redis-success" class="hidden">
+                    <!-- Memory Usage Bar -->
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-medium text-gray-700 font-inter">Memory Usage</span>
+                            <span class="text-sm font-mono text-gray-600" id="memory-percentage">-</span>
+                        </div>
+                        <div class="w-full h-6 bg-gray-200 rounded-full overflow-hidden">
+                            <div id="memory-bar" class="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1 font-mono">
+                            <span id="used-memory-label">Used: -</span>
+                            <span id="free-memory-label">Free: -</span>
+                            <span id="max-memory-label">Max: -</span>
+                        </div>
+                    </div>
+
+                    <!-- Redis Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <!-- Used Memory -->
+                        <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-700 font-inter">Used Memory</h3>
+                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-blue-600" viewBox="0 0 16 16">
+                                        <path d="M1 3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 1 13.5V6a1 1 0 0 1-1-1zm2 2v7.5A1.5 1.5 0 0 0 4.5 14h9a1.5 1.5 0 0 0 1.5-1.5V5zm10-2H3v1h10z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="text-2xl font-bold text-gray-900 font-mono" id="used-memory">-</div>
+                        </div>
+
+                        <!-- RSS Memory -->
+                        <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-700 font-inter">RSS Memory</h3>
+                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-green-600" viewBox="0 0 16 16">
+                                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                        <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="text-2xl font-bold text-gray-900 font-mono" id="used-memory-rss">-</div>
+                        </div>
+
+                        <!-- Peak Memory -->
+                        <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-700 font-inter">Peak Memory</h3>
+                                <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-orange-600" viewBox="0 0 16 16">
+                                        <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="text-2xl font-bold text-gray-900 font-mono" id="used-memory-peak">-</div>
+                        </div>
+
+                        <!-- Fragmentation -->
+                        <div class="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-all duration-300">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="text-sm font-medium text-gray-700 font-inter">Fragmentation</h3>
+                                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-purple-600" viewBox="0 0 16 16">
+                                        <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="text-2xl font-bold text-gray-900 font-mono" id="mem-fragmentation-ratio">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Redis Stats -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Memory Breakdown -->
+                        <div class="border border-gray-200 rounded-2xl p-6">
+                            <h3 class="text-lg font-bold mb-4 text-gray-900 font-lora">Memory Breakdown</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Dataset</span>
+                                    <span class="text-sm font-mono text-gray-900" id="used-memory-dataset">-</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Overhead</span>
+                                    <span class="text-sm font-mono text-gray-900" id="used-memory-overhead">-</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Scripts</span>
+                                    <span class="text-sm font-mono text-gray-900" id="used-memory-scripts">-</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Startup</span>
+                                    <span class="text-sm font-mono text-gray-900" id="used-memory-startup">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fragmentation Details -->
+                        <div class="border border-gray-200 rounded-2xl p-6">
+                            <h3 class="text-lg font-bold mb-4 text-gray-900 font-lora">Fragmentation Details</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Ratio</span>
+                                    <span class="text-sm font-mono text-gray-900" id="mem-fragmentation-ratio-detail">-</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Bytes</span>
+                                    <span class="text-sm font-mono text-gray-900" id="mem-fragmentation-bytes">-</span>
+                                </div>
+                                <div class="flex justify-between items-center py-2">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Allocator</span>
+                                    <span class="text-sm font-mono text-gray-900" id="mem-allocator">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="relative z-10 w-full py-8 mt-auto">
+    <div class="container mx-auto px-6">
+        <div class="border-t border-gray-200 pt-8">
+            <div class="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8">
+                <a href="/docs" target="_blank" rel="noopener noreferrer" class="group flex items-center space-x-3 text-gray-600 hover:text-purple-600 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="group-hover:scale-110 transition-transform duration-300" viewBox="0 0 16 16">
+                        <path d="M5 4a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5M5 8a.5.5 0 0 0 0 1h6a.5.5 0 0 0 0-1zm0 2a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1z"/>
+                        <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/>
+                    </svg>
+                    <span class="font-inter font-medium">FastAPI Documentation</span>
+                </a>
+                
+                <div class="flex items-center space-x-3 text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+                    </svg>
+                    <span class="font-inter font-medium">System Status Monitor</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script>
+    let autoRefreshInterval = null;
+    let isAutoRefreshEnabled = false;
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        if (bytes === null || bytes === undefined) return '-';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatNumber(num) {
+        if (num === null || num === undefined) return '-';
+        return num.toLocaleString();
+    }
+
+    function showStatus(message, isError = false) {
+        const statusMessage = document.getElementById('statusMessage');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusText = document.getElementById('statusText');
+
+        statusIcon.innerHTML = isError ? 
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-red-600" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/></svg>' :
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="text-green-600" viewBox="0 0 16 16"><path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.061L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/></svg>';
+
+        statusText.textContent = message;
+        statusText.className = `text-sm font-medium font-inter ${isError ? 'text-red-700' : 'text-green-700'}`;
+        
+        statusMessage.classList.remove('hidden');
+        
+        setTimeout(() => {
+            statusMessage.classList.add('hidden');
+        }, 4000);
+    }
+
+    function updateSystemDisplay(data) {
+        // Update application process metrics
+        const appProcess = data.app_process;
+        document.getElementById('process-memory').textContent = `${appProcess.process_memory_mb} MB`;
+        document.getElementById('process-cpu').textContent = `${appProcess.process_cpu_percent.toFixed(1)}%`;
+
+        // Handle Redis metrics
+        const redis = data.redis;
+        const redisError = document.getElementById('redis-error');
+        const redisSuccess = document.getElementById('redis-success');
+        const redisErrorMessage = document.getElementById('redis-error-message');
+
+        if (redis.error) {
+            // Show Redis error
+            redisError.classList.remove('hidden');
+            redisSuccess.classList.add('hidden');
+            redisErrorMessage.textContent = redis.error;
+        } else {
+            // Show Redis success data
+            redisError.classList.add('hidden');
+            redisSuccess.classList.remove('hidden');
+
+            const memoryInfo = redis.memory_info;
+            const memoryStats = redis.memory_stats;
+            const freeMemoryMb = redis.free_memory_mb;
+
+            // Main memory stats
+            document.getElementById('used-memory').textContent = formatBytes(memoryInfo.used_memory);
+            document.getElementById('used-memory-rss').textContent = formatBytes(memoryInfo.used_memory_rss);
+            document.getElementById('used-memory-peak').textContent = formatBytes(memoryInfo.used_memory_peak);
+            document.getElementById('mem-fragmentation-ratio').textContent = memoryInfo.mem_fragmentation_ratio ? memoryInfo.mem_fragmentation_ratio.toFixed(2) : '-';
+
+            // Memory bar and labels
+            if (memoryInfo.used_memory && memoryInfo.maxmemory && memoryInfo.maxmemory > 0) {
+                const percentage = (memoryInfo.used_memory / memoryInfo.maxmemory) * 100;
+                document.getElementById('memory-bar').style.width = percentage + '%';
+                document.getElementById('memory-percentage').textContent = percentage.toFixed(1) + '%';
+            }
+
+            document.getElementById('used-memory-label').textContent = `Used: ${formatBytes(memoryInfo.used_memory)}`;
+            document.getElementById('free-memory-label').textContent = `Free: ${freeMemoryMb ? formatBytes(freeMemoryMb * 1024 * 1024) : '-'}`;
+            document.getElementById('max-memory-label').textContent = `Max: ${formatBytes(memoryInfo.maxmemory)}`;
+
+            // Detailed stats
+            document.getElementById('used-memory-dataset').textContent = formatBytes(memoryInfo.used_memory_dataset);
+            document.getElementById('used-memory-overhead').textContent = formatBytes(memoryInfo.used_memory_overhead);
+            document.getElementById('used-memory-scripts').textContent = formatBytes(memoryInfo.used_memory_scripts);
+            document.getElementById('used-memory-startup').textContent = formatBytes(memoryInfo.used_memory_startup);
+
+            // Fragmentation details
+            document.getElementById('mem-fragmentation-ratio-detail').textContent = memoryInfo.mem_fragmentation_ratio ? memoryInfo.mem_fragmentation_ratio.toFixed(2) : '-';
+            document.getElementById('mem-fragmentation-bytes').textContent = formatBytes(memoryInfo.mem_fragmentation_bytes);
+            document.getElementById('mem-allocator').textContent = memoryInfo.mem_allocator || '-';
+        }
+
+        // Last updated
+        document.getElementById('last-updated').textContent = new Date().toLocaleString('en-US');
+    }
+
+    async function loadSystemStatus() {
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+        const contentEl = document.getElementById('content');
+        const errorMessageEl = document.getElementById('errorMessage');
+
+        try {
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            contentEl.style.display = 'none';
+
+            const response = await fetch('/status/ram');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            updateSystemDisplay(data);
+            
+            loadingEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            
+            if (!isAutoRefreshEnabled) {
+                showStatus('System data updated successfully');
+            }
+            
+        } catch (error) {
+            console.error('Error loading system status:', error);
+            
+            loadingEl.style.display = 'none';
+            contentEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorMessageEl.textContent = `Failed to load system data: ${error.message}`;
+            
+            showStatus(`Error: ${error.message}`, true);
+        }
+    }
+
+    function toggleAutoRefresh() {
+        const btn = document.getElementById('autoRefreshBtn');
+        
+        if (isAutoRefreshEnabled) {
+            // Disable auto-refresh
+            clearInterval(autoRefreshInterval);
+            isAutoRefreshEnabled = false;
+            btn.classList.remove('bg-purple-100', 'border-purple-300');
+            btn.classList.add('bg-white', 'border-gray-200');
+            showStatus('Auto-refresh disabled');
+        } else {
+            // Enable auto-refresh
+            autoRefreshInterval = setInterval(loadSystemStatus, 10000);
+            isAutoRefreshEnabled = true;
+            btn.classList.remove('bg-white', 'border-gray-200');
+            btn.classList.add('bg-purple-100', 'border-purple-300');
+            showStatus('Auto-refresh enabled (every 10 seconds)');
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSystemStatus();
+        // Enable auto-refresh by default
+        toggleAutoRefresh();
+    });
+</script>
+
+<style>
+    html {
+        scroll-behavior: smooth;
+    }
+    
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f5f5f5;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #8b5cf6;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #7c3aed;
+    }
+</style>
+
+</body>
+</html>
