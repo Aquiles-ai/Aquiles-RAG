@@ -201,7 +201,7 @@ These options give full flexibility to connect to any Redis topology securely.
 * **Deploy custom config**
 
   ```bash
-  aquiles-rag deploy --host "0.0.0.0" --port 5500 my_config.py
+  aquiles-rag deploy --host "0.0.0.0" --port 5500 --workers 4 my_config.py
   ```
 
 ### REST API
