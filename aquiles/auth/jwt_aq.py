@@ -3,20 +3,17 @@ from aquiles.configs import load_aquiles_config
 from fastapi import Depends, HTTPException, Cookie
 from datetime import datetime, timedelta
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 import jwt
 import secrets
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore")
     JWT_SECRET: str = Field(
         default_factory=lambda: secrets.token_urlsafe(32),
         description="Secret key to sign JWT"
     )
     ALGORITHM: str = Field("HS256", description="JWT signature algorithm")
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 settings = Settings(ALGORITHM="HS256")
 

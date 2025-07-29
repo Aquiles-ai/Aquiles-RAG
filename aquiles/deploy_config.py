@@ -1,5 +1,5 @@
 from aquiles.configs import InitConfigs
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 import secrets
 import os
@@ -11,6 +11,7 @@ os.makedirs(data_dir, exist_ok=True)
 AQUILES_CONFIG = os.path.join(data_dir, "aquiles_cofig.json")
 
 class DeployConfig(InitConfigs, BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore")
     JWT_SECRET: str = Field(
         default_factory=lambda: secrets.token_urlsafe(32),
         description="Secret key to sign JWT"
