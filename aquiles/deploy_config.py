@@ -17,10 +17,6 @@ class DeployConfig(InitConfigs, BaseSettings):
     )
     ALGORITHM: str = Field("HS256", description="JWT signature algorithm")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
 def gen_configs_file(config: DeployConfig) -> None:
     if not os.path.exists(AQUILES_CONFIG):
         default_configs = config.dict()

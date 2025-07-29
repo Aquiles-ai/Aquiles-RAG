@@ -17,7 +17,7 @@ class InitConfigs(BaseModel):
     local: bool = Field(True, description="Redis standalone local")
     host: str = Field("localhost", description="Redis Host")
     port: int = Field(6379, description="Redis Port")
-    usernanme: str = Field("", description="If a username has been configured for Redis, configure it here, by default it is not necessary")
+    username: str = Field("", description="If a username has been configured for Redis, configure it here, by default it is not necessary")
     password: str = Field("", description="If a password has been configured for Redis, configure it here, by default it is not necessary")
     cluster_mode: bool = Field(False, description="Option that if you have a Redis Cluster locally, activate it, if you do not have a local cluster leave it as False")
     tls_mode: bool = Field(False, description="Option to connect via SSL/TLS, only leave it as True if you are going to connect via SSL/TLS")
