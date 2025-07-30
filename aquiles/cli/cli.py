@@ -69,6 +69,7 @@ def serve(host, port):
 @click.option("--workers", type=int, default=4, help="Number of uvicorn workers when casting Aquiles-RAG")
 @click.argument("config", type=click.Path(exists=True))
 def deploy_command(host, port, config, workers):
+    import subprocess
 
     module_name = os.path.splitext(os.path.basename(config))[0]
     spec = importlib.util.spec_from_file_location(module_name, config)
@@ -80,8 +81,15 @@ def deploy_command(host, port, config, workers):
     else:
         click.echo("The file does not have a 'run()' function")
 
-    import uvicorn
-    uvicorn.run("aquiles.main:app", host=host, port=port, workers=workers)
+    cmd = [
+        "uvicorn",
+        "aquiles.main:app",   
+        "--host", str(host),
+        "--port", str(port),
+        "--workers", str(workers)
+    ]
+
+    subprocess.run(cmd, check=True)
 
 
 if __name__ == "__main__":
