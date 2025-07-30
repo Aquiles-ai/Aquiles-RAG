@@ -81,8 +81,7 @@ def deploy_command(host, port, config, workers):
         click.echo("The file does not have a 'run()' function")
 
     import uvicorn
-    from aquiles.main import app
-    uvicorn.run(app, host=host, port=port, workers=workers)
+    uvicorn.run("aquiles.main:app", host=host, port=port, workers=workers)
 
 
 if __name__ == "__main__":
