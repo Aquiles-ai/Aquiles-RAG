@@ -99,6 +99,9 @@ class EditsConfigs(BaseModel):
     ssl_ca: Optional[str] = Field(None, description="Absolute path of the SSL CA")
     allows_api_keys: Optional[List[str]] = Field( None, description="New list of allowed API keys (replaces the previous one)")
     allows_users: Optional[List[AllowedUser]] = Field(None, description="New list of allowed users (replaces the previous one)")
+
+class DropIndex(BaseModel):
+    index_name: str = Field(..., description="The name of the index to delete (Note that it deletes the index and its data)")
     
 
 @app.post("/create/index", dependencies=[Depends(verify_api_key)])
@@ -141,7 +144,6 @@ async def create_index(q: CreateIndex, request: Request):
         )
     )
 
-    # Creamos el índice con prefijo
     definition = IndexDefinition(
         prefix=[f"{q.indexname}:"],
         index_type=IndexType.HASH
@@ -261,15 +263,23 @@ async def query_rag(q: QueryRAG, request: Request):
         ]
     }
 
+@app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)])
+async def drop_index(q: DropIndex, request: Request):
+    r: Union[Redis, RedisCluster] = request.app.state.redis
+    try:
+        res = await r.ft(q.index_name).dropindex(True)
+        return {"status": "ok", "drop-index": q.index_name}
+    except Exception as e:
+        print(f"Delete error: {e}")
+        raise HTTPException(500, f"Delete error: {e}")
+
 # All of these are routes for the UI. I'm going to try to make them as minimal as possible so as not to affect performance.
 
 @app.exception_handler(HTTPException)
 async def auth_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == HTTP_401_UNAUTHORIZED:
-        # pasa la ruta original en el parámetro 'next'
         login_url = f"/login/ui?next={request.url.path}"
         return RedirectResponse(url=login_url, status_code=302)
-    # para otros HTTPException, responde normalmente
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
@@ -283,7 +293,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     response = RedirectResponse(url="/ui", status_code=302)
-    # Guardo la cookie con esquema Bearer
     response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
     return response
 
