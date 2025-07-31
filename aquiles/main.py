@@ -101,7 +101,8 @@ class EditsConfigs(BaseModel):
     allows_users: Optional[List[AllowedUser]] = Field(None, description="New list of allowed users (replaces the previous one)")
 
 class DropIndex(BaseModel):
-    index_name: str = Field(..., description="The name of the index to delete (Note that it deletes the index and its data)")
+    index_name: str = Field(..., description="The name of the index to delete")
+    delete_docs: bool = Field(False, description="Removes all documents from the index if true")
     
 
 @app.post("/create/index", dependencies=[Depends(verify_api_key)])
@@ -267,8 +268,11 @@ async def query_rag(q: QueryRAG, request: Request):
 async def drop_index(q: DropIndex, request: Request):
     r: Union[Redis, RedisCluster] = request.app.state.redis
     try:
-        res = await r.ft(q.index_name).dropindex(True)
-        return {"status": "ok", "drop-index": q.index_name}
+        if q.delete_docs:
+            res = await r.ft(q.index_name).dropindex(True)
+        else:
+            res = await r.ft(q.index_name).dropindex(False)
+        return {"status": res, "drop-index": q.index_name}
     except Exception as e:
         print(f"Delete error: {e}")
         raise HTTPException(500, f"Delete error: {e}")
