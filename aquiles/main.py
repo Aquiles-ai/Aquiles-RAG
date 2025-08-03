@@ -424,6 +424,19 @@ async def get_status_ram(request: Request) -> Dict[str, Any]:
 async def status(request: Request):
     return templates.TemplateResponse("status.html", {"request": request})
 
+@app.get("/health/live", tags=["health"])
+async def liveness():
+    return {"status": "alive"}
+
+@app.get("/health/ready", tags=["health"])
+async def readiness(request: Request):
+    r: Union[Redis, RedisCluster] = request.app.state.redis
+    try:
+        await r.ping()
+        return {"status": "ready"}
+    except:
+        raise HTTPException(503, "Redis unavailable")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -433,7 +446,7 @@ app.add_middleware(
 )
 
 
-#if __name__ == "__main__":
-#    import uvicorn
+if __name__ == "__main__":
+    import uvicorn
 
-#    uvicorn.run(app=app, host="0.0.0.0", port=5500)
+    uvicorn.run(app=app, host="0.0.0.0", port=5500)
