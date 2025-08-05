@@ -2,6 +2,7 @@ import click
 from aquiles.configs import load_aquiles_config, save_aquiles_configs
 import os
 import importlib.util
+from aquiles.utils import checkout
 
 @click.group()
 def cli():
@@ -59,9 +60,19 @@ def save_configs(local, host, port,
 @click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
 def serve(host, port):
     """Inicia el servidor FastAPI de Aquiles-RAG."""
-    import uvicorn
-    from aquiles.main import app
-    uvicorn.run(app, host=host, port=port)
+    try:
+        import uvicorn
+        from aquiles.main import app
+        uvicorn.run(app, host=host, port=port)
+    finally:
+        up_to_date, latest = checkout()
+        if not up_to_date and latest:
+            click.secho(
+                f"🚀 A new version is available: aquiles-rag=={latest}\n"
+                f"Update with:\n"
+                f"   pip install aquiles-rag=={latest}",
+                fg="yellow",
+            )
 
 @cli.command("deploy")
 @click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
@@ -69,6 +80,15 @@ def serve(host, port):
 @click.option("--workers", type=int, default=4, help="Number of uvicorn workers when casting Aquiles-RAG")
 @click.argument("config", type=click.Path(exists=True))
 def deploy_command(host, port, config, workers):
+    up_to_date, latest = checkout()
+    if not up_to_date and latest:
+        click.secho(
+            f"🚀 A new version is available: aquiles-rag=={latest}\n"
+            f"  Update with:\n"
+            f"    pip install aquiles-rag=={latest}",
+            fg="yellow",
+        )
+    
     import subprocess
 
     module_name = os.path.splitext(os.path.basename(config))[0]

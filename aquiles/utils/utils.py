@@ -3,6 +3,9 @@ from fastapi.security import APIKeyHeader
 from aquiles.configs import load_aquiles_config
 from starlette import status
 from typing import Optional
+from packaging.version import Version, InvalidVersion
+from importlib.metadata import version as get_installed_version, PackageNotFoundError
+import requests
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -49,3 +52,41 @@ def chunk_text_by_words(text: str, chunk_size: int = 600) -> list[str]:
         chunks.append(" ".join(chunk))
     
     return chunks
+
+
+def checkout():
+    pkg = "aquiles-rag"
+    url = f"https://pypi.org/pypi/{pkg}/json"
+
+    # 1) Obtiene la info desde PyPI JSON
+    try:
+        resp = requests.get(url, timeout=5)
+        resp.raise_for_status()
+    except requests.RequestException:
+        # Si falla la conexión a PyPI, asumimos que no podemos comprobar
+        return True, None
+
+    data = resp.json()
+    latest = data.get("info", {}).get("version")
+    if not latest:
+        return True, None
+
+    # 2) Obtiene la versión local
+    try:
+        v_local = get_installed_version(pkg)
+    except PackageNotFoundError:
+        # No instalado: forzamos sugerencia de instalar la última
+        return False, latest
+
+    # 3) Compara semánticamente
+    try:
+        v_local_parsed  = Version(v_local)
+        v_latest_parsed = Version(latest)
+    except InvalidVersion:
+        # Alguna versión no parsea: sugerimos actualizar
+        return False, latest
+
+    if v_local_parsed < v_latest_parsed:
+        return False, latest
+    else:
+        return True, latest

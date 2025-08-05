@@ -1,1 +1,1 @@
-from .utils import verify_api_key, chunk_text_by_words
+from .utils import verify_api_key, chunk_text_by_words, checkout

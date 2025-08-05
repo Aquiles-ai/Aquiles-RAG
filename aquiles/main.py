@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
 
     await app.state.redis.aclose()
 
-app = FastAPI(title="Aquiles-RAG", debug=True, lifespan=lifespan)
+app = FastAPI(title="Aquiles-RAG", debug=True, lifespan=lifespan, docs_url=None, redoc_url=None)
 
 package_dir = pathlib.Path(__file__).parent.absolute()
 static_dir = os.path.join(package_dir, "static")
