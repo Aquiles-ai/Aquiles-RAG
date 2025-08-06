@@ -108,7 +108,7 @@ class AsyncAquilesRAG:
         Split raw text into chunks, compute embeddings using the provided function, and store them in the RAG index.
 
         Args:
-            embedding_func (Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]): Function that takes a text chunk and returns its embedding vector.
+            embedding_func (Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]): A synchronous or asynchronous function that takes a text chunk and returns its embedding vector.
             index (str): Name of the index to store the embedded documents.
             name_chunk (str): Prefix used to name each chunk (e.g., document name).
             raw_text (str): The full raw text to be split and embedded.
