@@ -1,9 +1,10 @@
 import httpx
-from typing import List, Literal, Callable, Sequence
+from typing import List, Literal, Callable, Sequence, Awaitable, Union
 from aquiles.utils import chunk_text_by_words
 import asyncio
+import inspect
 
-EmbeddingFunc = Callable[[str], Sequence[float]]
+EmbeddingFunc = Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]
 
 class AsyncAquilesRAG:
     def __init__(self, host: str = "http://127.0.0.1:5500", api_key=None):
@@ -107,7 +108,7 @@ class AsyncAquilesRAG:
         Split raw text into chunks, compute embeddings using the provided function, and store them in the RAG index.
 
         Args:
-            embedding_func (Callable[[str], Sequence[float]]): Function that takes a text chunk and returns its embedding vector.
+            embedding_func (Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]): Function that takes a text chunk and returns its embedding vector.
             index (str): Name of the index to store the embedded documents.
             name_chunk (str): Prefix used to name each chunk (e.g., document name).
             raw_text (str): The full raw text to be split and embedded.
@@ -123,7 +124,11 @@ class AsyncAquilesRAG:
         async with httpx.AsyncClient(timeout=10.0) as client:
             tasks = []
             for idx, chunk in enumerate(chunks, start=1):
-                emb = embedding_func(chunk)
+                result = embedding_func(chunk)
+                if inspect.isawaitable(result):
+                    emb = await result    
+                else:
+                    emb = result 
                 payload = {
                     "index": index,
                     "name_chunk": f"{name_chunk}_{idx}",
