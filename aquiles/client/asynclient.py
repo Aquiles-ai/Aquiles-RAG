@@ -3,8 +3,11 @@ from typing import List, Literal, Callable, Sequence, Awaitable, Union
 from aquiles.utils import chunk_text_by_words
 import asyncio
 import inspect
+from httpx import Timeout
 
 EmbeddingFunc = Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]
+
+timeout = Timeout(connect=10.0, read=30.0, write=30.0, pool=30.0)
 
 class AsyncAquilesRAG:
     def __init__(self, host: str = "http://127.0.0.1:5500", api_key=None):
@@ -43,7 +46,7 @@ class AsyncAquilesRAG:
                 "dtype": dtype,
                 "delete_the_index_if_it_exists": delete_the_index_if_it_exists}
         
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(url, json=body, headers=self.headers)
             response.raise_for_status()
             return response.text
@@ -76,7 +79,7 @@ class AsyncAquilesRAG:
             "cosine_distance_threshold": cosine_distance_threshold
         }
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(url, json=body, headers=self.headers)
             response.raise_for_status()
             return response.json()
@@ -121,7 +124,7 @@ class AsyncAquilesRAG:
         url = f"{self.base_url}/rag/create"
         chunks = chunk_text_by_words(raw_text)
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             tasks = []
             for idx, chunk in enumerate(chunks, start=1):
                 result = embedding_func(chunk)
