@@ -143,3 +143,24 @@ class AsyncAquilesRAG:
                 tasks.append(self._send_chunk(client, url, payload, idx))
 
             return await asyncio.gather(*tasks)
+
+    async def drop_index(self, index_name: str, delete_docs: bool = False) -> List[dict]:
+        """
+            Delete the index and documents if indicated.
+
+            Args:
+                index_name (str): Name of the index to delete
+                delete_docs (bool): If True, removes documents from the index, by default it is False
+
+            Returns:
+                List[dict]: A JSON with the status and name of the deleted index
+        """
+        url = f'{self.base_url}/rag/drop_index'
+        body = {
+            "index_name": index_name,
+            "delete_docs": delete_docs
+        }
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, json=body, headers=self.headers)
+            response.raise_for_status()
+            return response.json()

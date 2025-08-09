@@ -138,3 +138,30 @@ class AquilesRAG:
                         responses.append({"chunk_index": idx, "error": str(e)})
 
                 return responses
+
+    def drop_index(self, index_name: str, delete_docs: bool = False) -> List[dict]:
+        """
+            Delete the index and documents if indicated.
+
+            Args:
+                index_name (str): Name of the index to delete
+                delete_docs (bool): If True, removes documents from the index, by default it is False
+
+            Returns:
+                List[dict]: A JSON with the status and name of the deleted index
+        """
+        url = f'{self.base_url}/rag/drop_index'
+
+        body = {
+            "index_name": index_name,
+            "delete_docs": delete_docs
+        }
+        try:
+            if self.api_key:
+                resp = r.post(url=url, json=body, headers=self.header)
+            else:
+                resp = r.post(url=url, json=body)
+            resp.raise_for_status()
+            return resp.json()
+        except r.RequestException as e:
+                raise RuntimeError(f"Error: {e}")
