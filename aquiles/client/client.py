@@ -9,9 +9,10 @@ class AquilesRAG:
         """ 
         Client for interacting with the Aquiles-RAG service.
 
-        Args:
-            host (str): Base URL of the Aquiles-RAG server. Defaults to localhost.
-            api_key (str, optional): API key for authenticated requests. If provided, included in headers.
+        Args
+        ----
+        host (str): Base URL of the Aquiles-RAG server. Defaults to localhost.
+        api_key (str, optional): API key for authenticated requests. If provided, included in headers.
         """
         self.base_url = host
         self.api_key = api_key
@@ -26,14 +27,16 @@ class AquilesRAG:
         """
         Create or overwrite a vector index in the Aquiles-RAG backend.
 
-        Args:
-            index_name (str): Unique name for the index.
-            embeddings_dim (int): Dimensionality of the embeddings to store.
-            dtype (str): Numeric data type for index storage (e.g., FLOAT32).
-            delete_the_index_if_it_exists (bool): If True, delete any existing index with the same name before creating.
+        Args
+        ----
+        index_name (str): Unique name for the index.
+        embeddings_dim (int): Dimensionality of the embeddings to store.
+        dtype (str): Numeric data type for index storage (e.g., FLOAT32).
+        delete_the_index_if_it_exists (bool): If True, delete any existing index with the same name before creating.
 
-        Returns:
-            str: Server response text indicating success or details.
+        Returns
+        -------
+        str: Server response text indicating success or details.
         """
 
         url = f'{self.base_url}/create/index'
@@ -59,15 +62,17 @@ class AquilesRAG:
             """
             Query the vector index for nearest neighbors based on cosine similarity.
 
-            Args:
-                index (str): Name of the index to search.
-                embedding (Sequence[float]): Query embedding vector.
-                dtype (str): Data type of the index (must match index creation).
-                top_k (int): Number of top matches to return.
-                cosine_distance_threshold (float): Maximum cosine distance for valid matches.
+            Args
+            ----
+            index (str): Name of the index to search.
+            embedding (Sequence[float]): Query embedding vector.
+            dtype (str): Data type of the index (must match index creation).
+            top_k (int): Number of top matches to return.
+            cosine_distance_threshold (float): Maximum cosine distance for valid matches.
 
-            Returns:
-                List[dict]: Ordered list of match results with scores and metadata.
+            Returns
+            -------
+            List[dict]: Ordered list of match results with scores and metadata.
             """
 
             url = f'{self.base_url}/rag/query-rag'
@@ -98,17 +103,18 @@ class AquilesRAG:
                 """
                 Split text into chunks, compute embeddings, and store them in the index.
 
-                Args:
-                    embedding_func (Callable[[str], Sequence[float]]):
-                        Function that takes a text chunk and returns its embedding vector.
-                    index (str): Name of the index to store documents.
-                    base_name (str): Prefix for chunk identifiers (e.g., document name).
-                    raw_text (str): Full text to be indexed.
-                    dtype (str): Data type of the index.
-                    chunk_size (int): Maximum number of words per chunk.
+                Args
+                ----
+                embedding_func (Callable[[str], Sequence[float]]): Function that takes a text chunk and returns its embedding vector.
+                index (str): Name of the index to store documents.
+                base_name (str): Prefix for chunk identifiers (e.g., document name).
+                raw_text (str): Full text to be indexed.
+                dtype (str): Data type of the index.
+                chunk_size (int): Maximum number of words per chunk.
 
-                Returns:
-                    List[dict]: Server responses for each chunk upload.
+                Returns
+                -------
+                List[dict]: Server responses for each chunk upload.
                 """
                 url = f'{self.base_url}/rag/create'
 
@@ -143,12 +149,14 @@ class AquilesRAG:
         """
             Delete the index and documents if indicated.
 
-            Args:
-                index_name (str): Name of the index to delete
-                delete_docs (bool): If True, removes documents from the index, by default it is False
+            Args
+            ----
+            index_name (str): Name of the index to delete
+            delete_docs (bool): If True, removes documents from the index, by default it is False
 
-            Returns:
-                List[dict]: A JSON with the status and name of the deleted index
+            Returns
+            -------
+            List[dict]: A JSON with the status and name of the deleted index
         """
         url = f'{self.base_url}/rag/drop_index'
 

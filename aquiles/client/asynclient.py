@@ -14,9 +14,10 @@ class AsyncAquilesRAG:
         """ 
         Asynchronous client to interact with the Aquiles-RAG service.
 
-        Args:
-            host (str): Base URL of the Aquiles-RAG server. Defaults to localhost.
-            api_key (str, optional): API key for authenticated requests. If provided, included in headers.
+        Args
+        ----
+        host (str): Base URL of the Aquiles-RAG server. Defaults to localhost.  
+        api_key (str, optional): API key for authenticated requests. If provided, included in headers.
         """
         self.base_url = host
         self.api_key = api_key
@@ -29,14 +30,16 @@ class AsyncAquilesRAG:
         """
         Create or overwrite a vector index in the Aquiles-RAG backend.
 
-        Args:
-            index_name (str): Unique name for the index.
-            embeddings_dim (int): Dimensionality of the embeddings to store.
-            dtype (str): Numeric data type for index storage (e.g., FLOAT32).
-            delete_the_index_if_it_exists (bool): If True, delete any existing index with the same name before creating.
+        Args
+        ----
+        index_name (str): Unique name for the index.
+        embeddings_dim (int): Dimensionality of the embeddings to store.
+        dtype (str): Numeric data type for index storage (e.g., FLOAT32).
+        delete_the_index_if_it_exists (bool): If True, delete any existing index with the same name before creating.
 
-        Returns:
-            str: Server response text indicating success or details.
+        Returns
+        -------
+        str: Server response text indicating success or details.
         """
 
         url = f'{self.base_url}/create/index'
@@ -58,15 +61,17 @@ class AsyncAquilesRAG:
         """
             Query the vector index for nearest neighbors based on cosine similarity.
 
-            Args:
-                index (str): Name of the index to search.
-                embedding (Sequence[float]): Query embedding vector.
-                dtype (str): Data type of the index (must match index creation).
-                top_k (int): Number of top matches to return.
-                cosine_distance_threshold (float): Maximum cosine distance for valid matches.
+            Args
+            ----
+            index (str): Name of the index to search.
+            embedding (Sequence[float]): Query embedding vector.
+            dtype (str): Data type of the index (must match index creation).
+            top_k (int): Number of top matches to return.
+            cosine_distance_threshold (float): Maximum cosine distance for valid matches.
 
-            Returns:
-                List[dict]: Ordered list of match results with scores and metadata.
+            Returns
+            -------
+            List[dict]: Ordered list of match results with scores and metadata.
             """
 
         url = f"{self.base_url}/rag/query-rag"
@@ -89,14 +94,16 @@ class AsyncAquilesRAG:
         """
         Helper method to send a single chunk to the RAG server.
 
-        Args:
-            client (httpx.AsyncClient): The active HTTP client.
-            url (str): Endpoint URL.
-            payload (dict): Data to send.
-            idx (int): Chunk index for tracking.
+        Args
+        ----
+        client (httpx.AsyncClient): The active HTTP client.
+        url (str): Endpoint URL.
+        payload (dict): Data to send.
+        idx (int): Chunk index for tracking.
 
-        Returns:
-            dict: Server response or error dictionary.
+        Returns
+        -------
+        dict: Server response or error dictionary.
         """
         try:
             resp = await client.post(url, json=payload, headers=self.headers)
@@ -110,15 +117,17 @@ class AsyncAquilesRAG:
         """
         Split raw text into chunks, compute embeddings using the provided function, and store them in the RAG index.
 
-        Args:
-            embedding_func (Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]): A synchronous or asynchronous function that takes a text chunk and returns its embedding vector.
-            index (str): Name of the index to store the embedded documents.
-            name_chunk (str): Prefix used to name each chunk (e.g., document name).
-            raw_text (str): The full raw text to be split and embedded.
-            dtype (str): Data type of the embeddings used in the index.
+        Args
+        ----
+        embedding_func (Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]): A synchronous or asynchronous function that takes a text chunk and returns its embedding vector.
+        index (str): Name of the index to store the embedded documents.
+        name_chunk (str): Prefix used to name each chunk (e.g., document name).
+        raw_text (str): The full raw text to be split and embedded.
+        dtype (str): Data type of the embeddings used in the index.
 
-        Returns:
-            List[dict]: Server responses or errors for each chunk upload.
+        Returns
+        -------
+        List[dict]: Server responses or errors for each chunk upload.
         """
 
         url = f"{self.base_url}/rag/create"
@@ -148,12 +157,14 @@ class AsyncAquilesRAG:
         """
             Delete the index and documents if indicated.
 
-            Args:
-                index_name (str): Name of the index to delete
-                delete_docs (bool): If True, removes documents from the index, by default it is False
+            Args
+            ----
+            index_name (str): Name of the index to delete
+            delete_docs (bool): If True, removes documents from the index, by default it is False
 
-            Returns:
-                List[dict]: A JSON with the status and name of the deleted index
+            Returns
+            -------
+            List[dict]: A JSON with the status and name of the deleted index
         """
         url = f'{self.base_url}/rag/drop_index'
         body = {

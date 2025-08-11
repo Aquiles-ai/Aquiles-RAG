@@ -18,8 +18,39 @@ class DeployConfig(InitConfigs, BaseSettings):
     )
     ALGORITHM: str = Field("HS256", description="JWT signature algorithm")
 
-def gen_configs_file(config: DeployConfig) -> None:
+def gen_configs_file(config: DeployConfig, force: bool = False) -> None:
+    """
+    Creates the configuration file `aquiles_config.json` in the user's data directory
+    (for example: ~/.local/share/aquiles/) **only if it doesn't exist**, or overwrites it
+    when `force=True` is passed.
+
+    Purpose
+    -------
+    Ensure that a deployment configuration file (Redis, API keys, allowed users, JWT, etc.)
+    is present before the server starts.
+
+    Args
+    ----
+    config : DeployConfig
+        A Pydantic configuration instance that contains all required keys.
+    force : bool, optional
+        If True, overwrites the existing file with the values from `config`. Defaults to False.
+
+    Returns
+    -------
+    None
+
+    Example
+    -------
+    >>> cfg = DeployConfig()
+    >>> gen_configs_file(cfg, force=False)
+    """
+
     if not os.path.exists(AQUILES_CONFIG):
+        default_configs = config.dict()
+        with open(AQUILES_CONFIG, "w", encoding="utf-8") as f:
+            json.dump(default_configs, f, ensure_ascii=False, indent=2)
+    elif os.path.exists(AQUILES_CONFIG) and force:
         default_configs = config.dict()
         with open(AQUILES_CONFIG, "w", encoding="utf-8") as f:
             json.dump(default_configs, f, ensure_ascii=False, indent=2)
