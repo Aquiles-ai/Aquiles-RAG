@@ -1,5 +1,5 @@
 import requests as r
-from typing import List, Literal, Callable,Sequence
+from typing import List, Literal, Callable, Sequence
 from aquiles.utils import chunk_text_by_words
 
 EmbeddingFunc = Callable[[str], Sequence[float]]
@@ -58,7 +58,8 @@ class AquilesRAG:
     def query(self, index: str, embedding, 
             dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
             top_k: int = 5,
-            cosine_distance_threshold: float = 0.6) -> List[dict]:
+            cosine_distance_threshold: float = 0.6,
+            embedding_model: str | None = None) -> List[dict]:
             """
             Query the vector index for nearest neighbors based on cosine similarity.
 
@@ -76,13 +77,23 @@ class AquilesRAG:
             """
 
             url = f'{self.base_url}/rag/query-rag'
-            body ={
-                "index" : index,
-                "embeddings": embedding,
-                "dtype": dtype,
-                "top_k": top_k,
-                "cosine_distance_threshold": cosine_distance_threshold
-            }
+            if embedding_model:
+                body ={
+                    "index" : index,
+                    "embeddings": embedding,
+                    "dtype": dtype,
+                    "top_k": top_k,
+                    "cosine_distance_threshold": cosine_distance_threshold,
+                    "embedding_model": embedding_model
+                }
+            else:
+                body ={
+                    "index" : index,
+                    "embeddings": embedding,
+                    "dtype": dtype,
+                    "top_k": top_k,
+                    "cosine_distance_threshold": cosine_distance_threshold
+                }
 
             try:
                 if self.api_key:
@@ -99,7 +110,8 @@ class AquilesRAG:
                 index: str,
                 name_chunk: str,
                 raw_text: str,
-                dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",) -> List[dict]:
+                dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
+                embedding_model: str | None = None) -> List[dict]:
                 """
                 Split text into chunks, compute embeddings, and store them in the index.
 
@@ -124,13 +136,24 @@ class AquilesRAG:
                 for idx, chunk in enumerate(chunks, start=1):
                     emb = embedding_func(chunk)
 
-                    payload = {
-                        "index": index,
-                        "name_chunk": f"{name_chunk}_{idx}",
-                        "dtype": dtype,
-                        "chunk_size": 1024,
-                        "raw_text": chunk,
-                        "embeddings": emb,
+                    if embedding_model:
+                        payload = {
+                            "index": index,
+                            "name_chunk": f"{name_chunk}_{idx}",
+                            "dtype": dtype,
+                            "chunk_size": 1024,
+                            "raw_text": chunk,
+                            "embeddings": emb,
+                            "embedding_model": embedding_model
+                        }
+                    else:
+                        payload = {
+                            "index": index,
+                            "name_chunk": f"{name_chunk}_{idx}",
+                            "dtype": dtype,
+                            "chunk_size": 1024,
+                            "raw_text": chunk,
+                            "embeddings": emb,
                         }
 
                     try:

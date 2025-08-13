@@ -90,3 +90,15 @@ def checkout():
         return False, latest
     else:
         return True, latest
+
+def _escape_tag(val: str) -> str:
+    return (
+        str(val)
+        .replace("\\", "\\\\")   # backslash primero
+        .replace(",", "\\,")
+        .replace("|", "\\|")
+        .replace("{", "\\{")
+        .replace("}", "\\}")
+        .replace("-", "\\-")     # ESCAPAR guiones
+        .replace(":", "\\:")     # ESCAPAR dos puntos (útil si aparecen en URLs)
+    )

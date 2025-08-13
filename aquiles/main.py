@@ -12,13 +12,13 @@ import redis
 import numpy as np
 from redis.asyncio import Redis
 from redis.asyncio.cluster import RedisCluster
-from redis.commands.search.field import TextField, VectorField, NumericField
+from redis.commands.search.field import TextField, VectorField, NumericField, TagField
 from redis.commands.search.query import Query
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
 from aquiles.connection import get_connection
 from aquiles.configs import AllowedUser
-from aquiles.utils import verify_api_key
+from aquiles.utils import verify_api_key, _escape_tag
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_401_UNAUTHORIZED
 import os
@@ -57,6 +57,7 @@ class SendRAG(BaseModel):
         description="Number of tokens in each chunk")
     raw_text: str = Field(..., description="Full original text of the chunk")
     embeddings: List[float] = Field(..., description="Vector of embeddings associated with the chunk")
+    embedding_model: str | None = Field(default=None, description="Optional metadata field for the embeddings model")
 
 class QueryRAG(BaseModel):
     index: str = Field(..., description="Name of the index in which the query will be made")
@@ -71,6 +72,7 @@ class QueryRAG(BaseModel):
         gt=0.0, lt=2.0,
         description="Max cosine distance (0–2) to accept; if omitted, no threshold"
     )
+    embedding_model: str | None = Field(default=None, description="Optional metadata field for the embeddings model")
 
 class CreateIndex(BaseModel):
     indexname: str = Field(..., description="Name of the index to create")
@@ -142,7 +144,8 @@ async def create_index(q: CreateIndex, request: Request):
                 "EF_CONSTRUCTION": 200,
                 "EF_RUNTIME": 100,
             }
-        )
+        ),
+        TagField("embedding_model", separator="|")
     )
 
     definition = IndexDefinition(
@@ -196,8 +199,16 @@ async def send_rag(q: SendRAG, request: Request):
         "embedding":    emb_bytes,
     }
 
+    val = q.embedding_model
     try:
-        print(f"[DEBUG] Guardando chunk → key={key}, size emb_bytes={len(emb_bytes)} bytes")
+        val = None if val is None else str(val).strip()
+    except Exception:
+        val = None
+    
+    mapping["embedding_model"] = val or "__unknown__"
+
+    try:
+        print(f"[DEBUG] Guardando chunk → key={key}, size emb_bytes={len(emb_bytes)} bytes, embedding_model={q.embedding_model!r}")
         await r.hset(key, mapping=mapping)
         print(f"[DEBUG] HSET OK para key={key}")
     except Exception as e:
@@ -217,17 +228,29 @@ async def query_rag(q: QueryRAG, request: Request):
     elif q.dtype == "FLOAT64":
         dtype = np.float64
     else:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"dtype not supported"
-        )
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="dtype not supported")
 
     emb_array = np.array(q.embeddings, dtype=dtype)
     emb_bytes = emb_array.tobytes()
-    
+
+    model_val = getattr(q, "embedding_model", None)
+    if model_val:
+        model_val = str(model_val).strip()
+        if model_val:  # si quedó vacío tras strip lo ignoramos
+            safe_tag = _escape_tag(model_val)
+            filter_prefix = f"(@embedding_model:{{{safe_tag}}})"
+        else:
+            filter_prefix = "(*)"
+    else:
+        filter_prefix = "(*)"
+
+    query_string = f"{filter_prefix}=>[KNN {q.top_k} @embedding $vec AS score]"
+
+    print("[DEBUG] FT.SEARCH query_string:", query_string)
+
     knn_q = (
-        Query(f"*=>[KNN {q.top_k} @embedding $vec AS score]")
-        .return_fields("name_chunk", "chunk_id", "chunk_size", "raw_text", "score")
+        Query(query_string)
+        .return_fields("name_chunk", "chunk_id", "chunk_size", "raw_text", "score", "embedding_model")
         .dialect(2)
     )
 
@@ -237,32 +260,36 @@ async def query_rag(q: QueryRAG, request: Request):
         print(f"Search error: {e}")
         raise HTTPException(500, f"Search error: {e}")
 
-    print(res)
-    docs = res.docs
-    print(docs)
-    if q.cosine_distance_threshold is not None:
-        docs = [
-            d for d in docs
-            if float(d.score) <= q.cosine_distance_threshold
-        ]
+    docs = res.docs or []
 
-    # Limitamos al top_k real
+    if q.cosine_distance_threshold is not None:
+        try:
+            docs = [d for d in docs if float(getattr(d, "score", 0.0)) <= q.cosine_distance_threshold]
+        except Exception:
+            pass
+
     docs = docs[: q.top_k]
-    
-    return {
-        "status": "ok",
-        "total": len(docs),
-        "results": [
-            {
-                "name_chunk": doc.name_chunk,
-                "chunk_id":   int(doc.chunk_id),
-                "chunk_size": int(doc.chunk_size),
-                "raw_text":   doc.raw_text,
-                "score":      float(doc.score),
-            }
-            for doc in docs
-        ]
-    }
+
+    results = []
+    for doc in docs:
+        embedding_model_val = getattr(doc, "embedding_model", None)
+        if isinstance(embedding_model_val, (bytes, bytearray)):
+            try:
+                embedding_model_val = embedding_model_val.decode("utf-8")
+            except Exception:
+                embedding_model_val = None
+
+        results.append({
+            "name_chunk": getattr(doc, "name_chunk", None),
+            "chunk_id":   int(getattr(doc, "chunk_id", 0)),
+            "chunk_size": int(getattr(doc, "chunk_size", 0)),
+            "raw_text":   getattr(doc, "raw_text", None),
+            "score":      float(getattr(doc, "score", 0.0)),
+            "embedding_model": embedding_model_val,
+        })
+
+    return {"status": "ok", "total": len(results), "results": results}
+
 
 @app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)])
 async def drop_index(q: DropIndex, request: Request):
