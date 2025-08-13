@@ -330,4 +330,4 @@ The following diagram shows the high‑level architecture of Aquiles‑RAG:
 
 ## 📄 License
 
-[MIT License](LICENSE)
+[Apache License](LICENSE)
