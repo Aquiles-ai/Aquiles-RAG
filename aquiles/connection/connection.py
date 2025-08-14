@@ -4,7 +4,7 @@ from aquiles.configs import load_aquiles_config
 from pathlib import Path
 
 async def get_connection():
-    configs    = load_aquiles_config()
+    configs    = await load_aquiles_config()
     local      = configs.get("local", True)
     host       = configs.get("host", "localhost")
     port       = configs.get("port", 6379)

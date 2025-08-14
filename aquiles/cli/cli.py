@@ -3,6 +3,7 @@ from aquiles.configs import load_aquiles_config, save_aquiles_configs
 import os
 import importlib.util
 from aquiles.utils import checkout
+import asyncio
 
 @click.group()
 def cli():
@@ -31,7 +32,7 @@ def save_configs(local, host, port,
                  cluster_mode, tls_mode,
                  ssl_cert, ssl_key, ssl_ca):
     try:
-        configs = load_aquiles_config()
+        configs = asyncio.run(load_aquiles_config())
 
         updates = {
             "local": local,

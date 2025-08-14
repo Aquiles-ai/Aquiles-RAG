@@ -49,7 +49,8 @@ dependencies = [
     "bcrypt==4.0.1",
     "pydantic[email]",
     "PyJWT",
-    "psutil"
+    "psutil",
+    "aiofiles"
 ]
 
 [project.optional-dependencies]

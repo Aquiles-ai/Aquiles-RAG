@@ -57,17 +57,24 @@ class AsyncAquilesRAG:
     async def query(self, index: str, embedding,
                     dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
                     top_k: int = 5,
-                    cosine_distance_threshold: float = 0.6) -> List[dict]:
+                    cosine_distance_threshold: float = 0.6,
+                    embedding_model: str | None = None) -> List[dict]:
         """
             Query the vector index for nearest neighbors based on cosine similarity.
 
             Args
             ----
             index (str): Name of the index to search.
+
             embedding (Sequence[float]): Query embedding vector.
+
             dtype (str): Data type of the index (must match index creation).
+
             top_k (int): Number of top matches to return.
+
             cosine_distance_threshold (float): Maximum cosine distance for valid matches.
+
+            embedding_model(str | None, optional): Optional filter to restrict results to embeddings created by a specific model (helps match embeddings produced by different models).
 
             Returns
             -------
@@ -76,13 +83,24 @@ class AsyncAquilesRAG:
 
         url = f"{self.base_url}/rag/query-rag"
 
-        body = {
-            "index": index,
-            "embeddings": embedding,
-            "dtype": dtype,
-            "top_k": top_k,
-            "cosine_distance_threshold": cosine_distance_threshold
-        }
+        
+        if embedding_model:
+            body = {
+                "index": index,
+                "embeddings": embedding,
+                "dtype": dtype,
+                "top_k": top_k,
+                "cosine_distance_threshold": cosine_distance_threshold,
+                "embedding_model": embedding_model
+            }
+        else:
+            body = {
+                "index": index,
+                "embeddings": embedding,
+                "dtype": dtype,
+                "top_k": top_k,
+                "cosine_distance_threshold": cosine_distance_threshold
+            }
 
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(url, json=body, headers=self.headers)
@@ -113,17 +131,25 @@ class AsyncAquilesRAG:
             return {"chunk_index": idx, "error": str(e)}
 
     async def send_rag(self, embedding_func: EmbeddingFunc, index: str, name_chunk: str,
-                        raw_text: str, dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32") -> List[dict]:
+                        raw_text: str, dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
+                        embedding_model: str | None = None) -> List[dict]:
         """
         Split raw text into chunks, compute embeddings using the provided function, and store them in the RAG index.
 
         Args
         ----
         embedding_func (Callable[[str], Union[Sequence[float], Awaitable[Sequence[float]]]]): A synchronous or asynchronous function that takes a text chunk and returns its embedding vector.
+
         index (str): Name of the index to store the embedded documents.
+
         name_chunk (str): Prefix used to name each chunk (e.g., document name).
+
         raw_text (str): The full raw text to be split and embedded.
+
         dtype (str): Data type of the embeddings used in the index.
+
+        embedding_model(str | None, optional): Embedding model used to compute vectors. Recommend providing this so retrieval can filter/weight by model provenance.
+
 
         Returns
         -------
@@ -141,14 +167,26 @@ class AsyncAquilesRAG:
                     emb = await result    
                 else:
                     emb = result 
-                payload = {
-                    "index": index,
-                    "name_chunk": f"{name_chunk}_{idx}",
-                    "dtype": dtype,
-                    "chunk_size": 1024,
-                    "raw_text": chunk,
-                    "embeddings": emb,
-                }
+
+                if embedding_model:
+                    payload = {
+                        "index": index,
+                        "name_chunk": f"{name_chunk}_{idx}",
+                        "dtype": dtype,
+                        "chunk_size": 1024,
+                        "raw_text": chunk,
+                        "embeddings": emb,
+                        "embedding_model": embedding_model
+                    }
+                else:
+                    payload = {
+                        "index": index,
+                        "name_chunk": f"{name_chunk}_{idx}",
+                        "dtype": dtype,
+                        "chunk_size": 1024,
+                        "raw_text": chunk,
+                        "embeddings": emb,
+                    }
                 tasks.append(self._send_chunk(client, url, payload, idx))
 
             return await asyncio.gather(*tasks)

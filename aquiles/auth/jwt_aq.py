@@ -6,6 +6,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import jwt
 import secrets
+import asyncio
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
 
 settings = Settings(ALGORITHM="HS256")
 
-cfg = load_aquiles_config()
+cfg = asyncio.run(load_aquiles_config())
 users_db = {u["username"]: u["password"] for u in cfg.get("allows_users", [])}
 
 SECRET_KEY = settings.JWT_SECRET

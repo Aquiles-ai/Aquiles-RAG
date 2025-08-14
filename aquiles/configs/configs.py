@@ -1,8 +1,12 @@
 import os
-from typing import List
+from typing import List, Dict, Any
 from platformdirs import user_data_dir
 import json
 from pydantic import BaseModel, Field
+import aiofiles
+import asyncio
+
+_load_lock = asyncio.Lock()
 
 data_dir = user_data_dir("aquiles", "AquilesRAG")
 os.makedirs(data_dir, exist_ok=True)
@@ -28,6 +32,7 @@ class InitConfigs(BaseModel):
     allows_users: List[AllowedUser] = Field( default_factory=lambda: [AllowedUser(username="root", password="root")],
         description="Users allowed to access the mini-UI and docs"
     )
+    initial_cap: int = Field(400)
 
 def init_aquiles_config() -> None:
     """
@@ -40,14 +45,29 @@ def init_aquiles_config() -> None:
         with open(AQUILES_CONFIG, "w", encoding="utf-8") as f:
             json.dump(default_configs, f, ensure_ascii=False, indent=2)
 
-def load_aquiles_config():
-    if os.path.exists(AQUILES_CONFIG):
+#def load_aquiles_config():
+#    if os.path.exists(AQUILES_CONFIG):
+#        try:
+#            with open(AQUILES_CONFIG, "r") as f:
+#                return json.load(f)
+#        except:
+#            return {}
+#    return {}
+
+async def load_aquiles_config() -> Dict[str, Any]:
+    async with _load_lock:  
         try:
-            with open(AQUILES_CONFIG, "r") as f:
-                return json.load(f)
-        except:
+            async with aiofiles.open(AQUILES_CONFIG, "r", encoding="utf-8") as f:
+                s = await f.read()
+        except FileNotFoundError:
             return {}
-    return {}
+        except Exception as exc:
+            return {}
+
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            return {}
 
 def save_aquiles_configs(configs):
     with open(AQUILES_CONFIG, "w") as f:

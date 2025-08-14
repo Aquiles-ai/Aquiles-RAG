@@ -29,7 +29,8 @@ import psutil
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.redis = await get_connection()
-
+    
+    app.state.aquiles_config = await load_aquiles_config()
     yield
 
     await app.state.redis.aclose()
@@ -236,7 +237,7 @@ async def query_rag(q: QueryRAG, request: Request):
     model_val = getattr(q, "embedding_model", None)
     if model_val:
         model_val = str(model_val).strip()
-        if model_val:  # si quedó vacío tras strip lo ignoramos
+        if model_val:  
             safe_tag = _escape_tag(model_val)
             filter_prefix = f"(@embedding_model:{{{safe_tag}}})"
         else:
@@ -349,7 +350,7 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
         except redis.RedisError:
             indices = []
 
-        configs = load_aquiles_config()
+        configs = app.state.aquiles_config
         return {"local": configs["local"],
                 "host": configs["host"],
                 "port": configs["port"],
@@ -369,7 +370,7 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
 @app.post("/ui/configs")
 async def ui_configs(update: EditsConfigs, user: str = Depends(get_current_user)):
     try:
-        configs = load_aquiles_config()
+        configs = app.state.aquiles_config
 
         partial = update.model_dump(exclude_unset=True, exclude_none=True)
 

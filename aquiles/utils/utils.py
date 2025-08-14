@@ -12,7 +12,7 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 async def verify_api_key(
     api_key: Optional[str] = Security(api_key_header)
 ):
-    configs = load_aquiles_config()
+    configs = await load_aquiles_config()
     valid_keys = [k for k in configs["allows_api_keys"] if k and k.strip()]
     
     if not valid_keys:

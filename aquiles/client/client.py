@@ -66,10 +66,16 @@ class AquilesRAG:
             Args
             ----
             index (str): Name of the index to search.
+
             embedding (Sequence[float]): Query embedding vector.
+
             dtype (str): Data type of the index (must match index creation).
+
             top_k (int): Number of top matches to return.
+
             cosine_distance_threshold (float): Maximum cosine distance for valid matches.
+
+            embedding_model(str | None, optional): Optional filter to restrict results to embeddings created by a specific model (helps match embeddings produced by different models).
 
             Returns
             -------
@@ -118,11 +124,18 @@ class AquilesRAG:
                 Args
                 ----
                 embedding_func (Callable[[str], Sequence[float]]): Function that takes a text chunk and returns its embedding vector.
+
                 index (str): Name of the index to store documents.
+
                 base_name (str): Prefix for chunk identifiers (e.g., document name).
+
                 raw_text (str): Full text to be indexed.
+
                 dtype (str): Data type of the index.
+
                 chunk_size (int): Maximum number of words per chunk.
+                
+                embedding_model(str | None, optional): Embedding model used to compute vectors. Recommend providing this so retrieval can filter/weight by model provenance.
 
                 Returns
                 -------
