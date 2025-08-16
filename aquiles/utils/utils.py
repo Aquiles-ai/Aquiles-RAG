@@ -6,6 +6,7 @@ from typing import Optional
 from packaging.version import Version, InvalidVersion
 from importlib.metadata import version as get_installed_version, PackageNotFoundError
 import requests
+from rich.console import Console
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -94,11 +95,35 @@ def checkout():
 def _escape_tag(val: str) -> str:
     return (
         str(val)
-        .replace("\\", "\\\\")   # backslash primero
+        .replace("\\", "\\\\")   
         .replace(",", "\\,")
         .replace("|", "\\|")
         .replace("{", "\\{")
         .replace("}", "\\}")
-        .replace("-", "\\-")     # ESCAPAR guiones
-        .replace(":", "\\:")     # ESCAPAR dos puntos (útil si aparecen en URLs)
+        .replace("-", "\\-")    
+        .replace(":", "\\:")     
     )
+
+def config_test():
+    console = Console()
+
+    console.print(":gorilla:",  "Hey welcome to [bold magenta]Aquiles-RAG[/bold magenta]!")
+    console.print(":wrench:", "Let's [bold cyan]configure[/bold cyan] to [bold magenta]Aquiles-RAG[/bold magenta] quickly")
+    console.print(":smiley:", "First choose which database you are going to use:")
+    r = int(console.input(":glowing_star: [bold red]1) Redis[/bold red] :zap: [bold cyan]2) Qdrant[/bold cyan] \n" ))
+
+    if r == 1:
+        console.print("You've chosen [bold red]Redis[/bold red], good luck! :smiley:")
+        local_i = int(console.input("Is [bold red]Redis[/bold red] running locally? 1) Yes 0) No\n"))
+        if local_i == 1:
+            local = True
+        elif local_i == 0:
+            local = False
+        else:
+            console.print("Invalid option")
+        host = str(console.input(":smiley: Enter the host of [bold red]Redis[/bold red]: "))
+        port = int(console.input(":wrench: Enter the port of [bold red]Redis[/bold red]:"))
+    elif r == 2:
+        console.print("Qdrant")
+    else:
+        console.print("Opcion invalida")
