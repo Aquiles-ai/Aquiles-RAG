@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from platformdirs import user_data_dir
 import json
 from pydantic import BaseModel, Field
@@ -17,7 +17,8 @@ class AllowedUser(BaseModel):
     username: str = Field(..., description="Allowed username")
     password: str = Field(..., description="Associated password")
 
-class InitConfigs(BaseModel):
+class InitConfigsRedis(BaseModel):
+    type_c: str = "Redis"
     local: bool = Field(True, description="Redis standalone local")
     host: str = Field("localhost", description="Redis Host")
     port: int = Field(6379, description="Redis Port")
@@ -34,13 +35,28 @@ class InitConfigs(BaseModel):
     )
     initial_cap: int = Field(400)
 
+class InitConfigsQdrant(BaseModel):
+    type_c: str = "Qdrant"
+    local: bool = Field(True, description="Qdrant standalone local")
+    host: str = Field("localhost", description="Qdrant Host")
+    port: int = Field(6333, description="Qdrant Port")
+    prefer_grpc: bool = Field(False, description="")
+    grpc_port: int = Field(6334, description="")
+    grpc_options: Optional[dict [str, Any]] = Field(default=None, description="Options for communication via gRPC")
+    api_key: str = Field(default="", description="API KEY from your Qdrant provider in Cloud")
+    auth_token_provider: str = Field(default="", description="Auth Token from your Qdrant provider in Cloud")
+    allows_api_keys: List[str] = Field( default_factory=lambda: [""], description="API KEYS allowed to make requests")
+    allows_users: List[AllowedUser] = Field( default_factory=lambda: [AllowedUser(username="root", password="root")],
+        description="Users allowed to access the mini-UI and docs"
+    )
+
 def init_aquiles_config() -> None:
     """
     Creates achilles config.json with the default values from InitConfigs if it doesn't exist. Does nothing if it's already present.
     """
     if not os.path.exists(AQUILES_CONFIG):
         # Instancia EditsConfigs con sus valores por defecto
-        default_configs = InitConfigs().dict()
+        default_configs = InitConfigsRedis().dict()
         # Guarda el JSON formateado
         with open(AQUILES_CONFIG, "w", encoding="utf-8") as f:
             json.dump(default_configs, f, ensure_ascii=False, indent=2)
