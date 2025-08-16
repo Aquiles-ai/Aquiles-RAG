@@ -14,7 +14,7 @@ from redis.asyncio.cluster import RedisCluster
 from redis.commands.search.query import Query
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
-from aquiles.connection import get_connection
+from aquiles.connection import get_connectionAll
 from aquiles.schemas import RedsSch
 from aquiles.models import QueryRAG, SendRAG, CreateIndex, EditsConfigs, DropIndex
 from aquiles.utils import verify_api_key, _escape_tag
@@ -24,15 +24,43 @@ import os
 import pathlib
 from contextlib import asynccontextmanager
 import psutil
+import inspect
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.redis = await get_connection()
-    
-    app.state.aquiles_config = await load_aquiles_config()
-    yield
+    app.state.con = await get_connectionAll()
 
-    await app.state.redis.aclose()
+    app.state.aquiles_config = await load_aquiles_config()
+    
+    type_co = app.state.aquiles_config.get("type_co", "Redis")
+    
+    try:
+        yield
+    finally:
+        con = getattr(app.state, "con", None)
+        if con is None:
+            return
+        try:
+            if type_co == "Redis":
+                if hasattr(con, "aclose"):
+                    if inspect.iscoroutinefunction(con.aclose):
+                        await con.aclose()
+                    else:
+                        con.aclose()
+                elif hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+                    else:
+                        con.close()
+            else:
+                if hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+                    else:
+                        con.close()
+        except Exception:
+            print("Error cerrando la conexión en shutdown")
 
 app = FastAPI(title="Aquiles-RAG", debug=True, lifespan=lifespan, docs_url=None, redoc_url=None)
 
@@ -47,7 +75,15 @@ init_aquiles_config()
 
 @app.post("/create/index", dependencies=[Depends(verify_api_key)])
 async def create_index(q: CreateIndex, request: Request):
-    r: Union[Redis, RedisCluster] = request.app.state.redis
+    conf = getattr(request.app.state, "aquiles_config", {}) or {}
+    type_co = conf.get("type_co", "Redis")
+
+    if type_co != "Redis":
+        raise HTTPException(status_code=400, detail="Index creation with Qdrant has not been implemented yet :(")
+
+    r = request.app.state.con  
+    if not hasattr(r, "ft"):
+        raise HTTPException(status_code=500, detail="Invalid or uninitialized Redis connection.")
 
     index = r.ft(q.indexname)
     exists = True
@@ -89,7 +125,7 @@ async def create_index(q: CreateIndex, request: Request):
 
 @app.post("/rag/create", dependencies=[Depends(verify_api_key)])
 async def send_rag(q: SendRAG, request: Request):
-    r: Union[Redis, RedisCluster] = request.app.state.redis
+    r = request.app.state.con
 
     if q.dtype == "FLOAT32":
         dtype = np.float32
@@ -138,7 +174,7 @@ async def send_rag(q: SendRAG, request: Request):
 
 @app.post("/rag/query-rag", dependencies=[Depends(verify_api_key)])
 async def query_rag(q: QueryRAG, request: Request):
-    r: Union[Redis, RedisCluster] = request.app.state.redis
+    r = request.app.state.con
 
     if q.dtype == "FLOAT32":
         dtype = np.float32
@@ -212,7 +248,7 @@ async def query_rag(q: QueryRAG, request: Request):
 
 @app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)])
 async def drop_index(q: DropIndex, request: Request):
-    r: Union[Redis, RedisCluster] = request.app.state.redis
+    r = request.app.state.con
     try:
         if q.delete_docs:
             res = await r.ft(q.index_name).dropindex(True)
@@ -260,7 +296,7 @@ async def login_ui(request: Request):
 @app.get("/ui/configs")
 async def get_configs(request: Request, user: str = Depends(get_current_user)):
     try:
-        r: Union[Redis, RedisCluster] = request.app.state.redis
+        r = request.app.state.con
 
         try:
             indices = await r.execute_command("FT._LIST")
@@ -336,7 +372,7 @@ async def get_status_ram(request: Request) -> Dict[str, Any]:
     }
 
     try:
-        r: Union[Redis, RedisCluster] = request.app.state.redis
+        r = request.app.state.con
 
         info = await r.info(section="memory")
 
@@ -376,7 +412,7 @@ async def liveness():
 
 @app.get("/health/ready", tags=["health"])
 async def readiness(request: Request):
-    r: Union[Redis, RedisCluster] = request.app.state.redis
+    r: Union[Redis, RedisCluster] = request.app.state.con
     try:
         await r.ping()
         return {"status": "ready"}

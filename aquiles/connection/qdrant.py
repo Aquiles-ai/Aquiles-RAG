@@ -1,13 +1,17 @@
-from qdrant_client import AsyncQdrantClient, models
+from qdrant_client import AsyncQdrantClient
 from aquiles.configs import load_aquiles_config
 from aquiles.connection import get_connection
-from typing import Literal
+import inspect
 
-async def get_connectionAll(type_co: Literal["Redis", "Qdrant"] = "Redis"):
-    if type_co == "Redis":
-        return get_connection
- 
+async def get_connectionAll():
     configs    = await load_aquiles_config()
+    type_co = configs.get("type_co", "Redis")
+    if type_co == "Redis":
+        conn = get_connection()
+        if inspect.isawaitable(conn):
+            conn = await conn
+        return conn
+ 
     local      = configs.get("local", True)
     host       = configs.get("host", "localhost")
     port       = configs.get("port", 6379)
