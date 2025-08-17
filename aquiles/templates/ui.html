@@ -140,8 +140,8 @@
                         <!-- Authentication -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div>
-                                <label for="usernanme" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
-                                <input type="text" id="usernanme" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <label for="username" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
+                                <input type="text" id="username" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
                             </div>
                             <div>
                                 <label for="password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
@@ -630,7 +630,7 @@
             document.getElementById('local').checked = config.local || false;
             document.getElementById('host').value = config.host || '';
             document.getElementById('port').value = config.port || '';
-            document.getElementById('usernanme').value = config.usernanme || '';
+            document.getElementById('username').value = config.username || '';
             document.getElementById('password').value = config.password || '';
             document.getElementById('cluster_mode').checked = config.cluster_mode || false;
             document.getElementById('tls_mode').checked = config.tls_mode || false;
@@ -997,7 +997,7 @@
             local: document.getElementById('local').checked,
             host: document.getElementById('host').value || null,
             port: parseInt(document.getElementById('port').value) || null,
-            usernanme: document.getElementById('usernanme').value || null,
+            username: document.getElementById('username').value || null,
             password: document.getElementById('password').value || null,
             cluster_mode: document.getElementById('cluster_mode').checked,
             tls_mode: document.getElementById('tls_mode').checked,
