@@ -247,6 +247,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
     return response
 
+@app.get("/")
 @app.get("/ui", response_class=HTMLResponse)
 async def home(request: Request, user: str = Depends(get_current_user)):
     try:
@@ -267,6 +268,8 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
 
         conf = getattr(request.app.state, "aquiles_config", {}) or {}
         type_co = conf.get("type_c", "Redis")
+
+        dict_ = {}
         
         if type_co == "Redis":
             
@@ -275,25 +278,41 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
 
             indices = await clientRd.get_ind()
 
+            dict_ = {"local": conf["local"],
+                    "host": conf["host"],
+                    "port": conf["port"],
+                    "usernanme": conf["username"],
+                    "password": conf["password"],
+                    "cluster_mode": conf["cluster_mode"],
+                    "ssl_cert": conf["ssl_cert"], 
+                    "ssl_key": conf["ssl_key"],
+                    "ssl_ca": conf["ssl_ca"],
+                    "allows_api_keys": conf["allows_api_keys"],
+                    "allows_users": conf["allows_users"],
+                    "indices": indices
+                    }
+
         elif type_co == "Qdrant":
             clientQdr = QdrantWr(r)
 
             indices = await clientQdr.get_ind()
 
+            dict_ = {"local": conf["local"],
+                    "host": conf["host"],
+                    "port": conf["port"],
+                    "prefer_grpc": conf["prefer_grpc"],
+                    "grpc_port": conf["grpc_port"],
+                    "grpc_options": conf["grpc_options"],
+                    "api_key": conf["api_key"],
+                    "auth_token_provider": conf["auth_token_provider"],
+                    "allows_api_keys": conf["allows_api_keys"],
+                    "allows_users": conf["allows_users"],
+                    "indices": indices
+                    }
+
             
-        return {"local": conf["local"],
-                "host": conf["host"],
-                "port": conf["port"],
-                "usernanme": conf["usernanme"],
-                "password": conf["password"],
-                "cluster_mode": conf["cluster_mode"],
-                "ssl_cert": conf["ssl_cert"], 
-                "ssl_key": conf["ssl_key"],
-                "ssl_ca": conf["ssl_ca"],
-                "allows_api_keys": conf["allows_api_keys"],
-                "allows_users": conf["allows_users"],
-                "indices": indices
-                }
+        return dict_
+
     except HTTPException:
         return RedirectResponse(url="/login/ui", status_code=302)
 
