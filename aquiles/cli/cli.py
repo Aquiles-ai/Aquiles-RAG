@@ -1,10 +1,8 @@
 import click
-from aquiles.configs import load_aquiles_config, save_aquiles_configs
 from aquiles.utils import create_config_cli
 import os
 import importlib.util
 from aquiles.utils import checkout
-import asyncio
 
 @click.group()
 def cli():

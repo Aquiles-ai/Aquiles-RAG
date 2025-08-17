@@ -6,14 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from datetime import timedelta
-from typing import Dict, Any
+from typing import Dict, Any, Union
 import numpy as np
 from aquiles.configs import load_aquiles_config, save_aquiles_configs
 from aquiles.utils import create_config_cli
 from aquiles.connection import get_connectionAll
 from aquiles.schemas import RedsSch
 from aquiles.wrapper import RdsWr, QdrantWr
-from aquiles.models import QueryRAG, SendRAG, CreateIndex, EditsConfigs, DropIndex
+from aquiles.models import QueryRAG, SendRAG, CreateIndex, DropIndex, EditsConfigsReds, EditsConfigsQdrant
 from aquiles.utils import verify_api_key
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_401_UNAUTHORIZED
@@ -251,7 +251,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @app.get("/ui", response_class=HTMLResponse)
 async def home(request: Request, user: str = Depends(get_current_user)):
     try:
-        return templates.TemplateResponse("ui.html", {"request": request})
+        conf = getattr(request.app.state, "aquiles_config", {}) or {}
+        type_co = conf.get("type_c", "Redis")
+        return templates.TemplateResponse("ui.html", {"request": request, "db_conf": type_co})
     except HTTPException:
         return RedirectResponse(url="/login/ui", status_code=302)
 
@@ -281,7 +283,7 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
             dict_ = {"local": conf["local"],
                     "host": conf["host"],
                     "port": conf["port"],
-                    "usernanme": conf["username"],
+                    "username": conf["username"],
                     "password": conf["password"],
                     "cluster_mode": conf["cluster_mode"],
                     "ssl_cert": conf["ssl_cert"], 
@@ -317,7 +319,7 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
         return RedirectResponse(url="/login/ui", status_code=302)
 
 @app.post("/ui/configs")
-async def ui_configs(update: EditsConfigs, user: str = Depends(get_current_user)):
+async def ui_configs(update: Union[EditsConfigsReds, EditsConfigsQdrant], user: str = Depends(get_current_user)):
     try:
         configs = app.state.aquiles_config
 
@@ -331,7 +333,7 @@ async def ui_configs(update: EditsConfigs, user: str = Depends(get_current_user)
 
         configs.update(partial)
 
-        save_aquiles_configs(configs)
+        await save_aquiles_configs(configs)
 
         return {"status": "ok", "updated": partial}
     except HTTPException:

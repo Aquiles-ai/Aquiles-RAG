@@ -41,8 +41,8 @@ class InitConfigsQdrant(BaseModel):
     local: bool = Field(True, description="Qdrant standalone local")
     host: str = Field("localhost", description="Qdrant Host")
     port: int = Field(6333, description="Qdrant Port")
-    prefer_grpc: bool = Field(False, description="")
-    grpc_port: int = Field(6334, description="")
+    prefer_grpc: bool = Field(False, description="If you are going to use the gRPC connection, activate this")
+    grpc_port: int = Field(6334, description="Port for gRPC connections")
     grpc_options: Optional[dict [str, Any]] = Field(default=None, description="Options for communication via gRPC")
     api_key: str = Field(default="", description="API KEY from your Qdrant provider in Cloud")
     auth_token_provider: str = Field(default="", description="Auth Token from your Qdrant provider in Cloud")
@@ -101,6 +101,23 @@ async def load_aquiles_config() -> Dict[str, Any]:
         except json.JSONDecodeError:
             return {}
 
-def save_aquiles_configs(configs):
-    with open(AQUILES_CONFIG, "w") as f:
-        json.dump(configs, f)
+async def save_aquiles_configs(configs: Union[dict, InitConfigsRedis, InitConfigsQdrant, BaseModel]) -> None:
+    async with _load_lock:
+        if isinstance(configs, (InitConfigsRedis, InitConfigsQdrant, BaseModel)):
+            try:
+                conf = configs.dict()
+            except Exception:
+                conf = configs.model_dump()
+        else:
+            conf = configs
+
+        config_path = Path(AQUILES_CONFIG)
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        tmp_path = config_path.with_suffix(".tmp")
+
+        json_str = json.dumps(conf, ensure_ascii=False, indent=2)
+        async with aiofiles.open(tmp_path, "w", encoding="utf-8") as f:
+            await f.write(json_str)
+
+        await asyncio.to_thread(os.replace, str(tmp_path), str(config_path))

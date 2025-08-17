@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, PositiveInt
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Any
 from aquiles.configs import AllowedUser
 
 class SendRAG(BaseModel):
@@ -45,7 +45,7 @@ class CreateIndex(BaseModel):
 
 
 
-class EditsConfigs(BaseModel):
+class EditsConfigsReds(BaseModel):
     local: Optional[bool] = Field(None, description="Redis standalone local")
     host: Optional[str] = Field(None, description="Redis Host")
     port: Optional[int] = Field(None, description="Redis Port")
@@ -56,6 +56,18 @@ class EditsConfigs(BaseModel):
     ssl_cert: Optional[str] = Field(None, description="Absolute path of the SSL Cert")
     ssl_key: Optional[str] = Field(None, description="Absolute path of the SSL Key")
     ssl_ca: Optional[str] = Field(None, description="Absolute path of the SSL CA")
+    allows_api_keys: Optional[List[str]] = Field( None, description="New list of allowed API keys (replaces the previous one)")
+    allows_users: Optional[List[AllowedUser]] = Field(None, description="New list of allowed users (replaces the previous one)")
+
+class EditsConfigsQdrant(BaseModel):
+    local: Optional[bool] = Field(None, description="Qdrant standalone local")
+    host: Optional[str] = Field(None, description="Qdrant Host")
+    port: Optional[int] = Field(None, description="Qdrant Port")
+    prefer_grpc: Optional[bool] = Field(None, description="If you are going to use the gRPC connection, activate this")
+    grpc_port: Optional[int] = Field(None, description="Port for gRPC connections")
+    grpc_options: Optional[dict [str, Any]] = Field(None, description="Options for communication via gRPC")
+    api_key: Optional[str] = Field(None, description="API KEY from your Qdrant provider in Cloud")
+    auth_token_provider: Optional[str] = Field(None, description="Auth Token from your Qdrant provider in Cloud")
     allows_api_keys: Optional[List[str]] = Field( None, description="New list of allowed API keys (replaces the previous one)")
     allows_users: Optional[List[AllowedUser]] = Field(None, description="New list of allowed users (replaces the previous one)")
 
