@@ -75,10 +75,9 @@ create_config_cli()
 async def create_index(q: CreateIndex, request: Request):
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
     type_co = conf.get("type_c", "Redis")
+    r = request.app.state.con  
 
     if type_co == "Redis":
-
-        r = request.app.state.con  
         if not hasattr(r, "ft"):
             raise HTTPException(status_code=500, detail="Invalid or uninitialized Redis connection.")
 
@@ -102,9 +101,7 @@ async def create_index(q: CreateIndex, request: Request):
         }
 
     elif type_co == "Qdrant":
-        qr = request.app.state.con
-
-        clientQdr = QdrantWr(qr)
+        clientQdr = QdrantWr(r)
 
         try:
             await clientQdr.create_index(q)
@@ -122,67 +119,110 @@ async def create_index(q: CreateIndex, request: Request):
 
 @app.post("/rag/create", dependencies=[Depends(verify_api_key)])
 async def send_rag(q: SendRAG, request: Request):
+
+    conf = getattr(request.app.state, "aquiles_config", {}) or {}
+    type_co = conf.get("type_c", "Redis")
     r = request.app.state.con
 
-    if q.dtype == "FLOAT32":
-        dtype = np.float32
-    elif q.dtype == "FLOAT16":
-        dtype = np.float16
-    elif q.dtype == "FLOAT64":
-        dtype = np.float64
-    else:
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"dtype not supported"
-        )
+    if type_co == "Redis":
 
-    emb_array = np.array(q.embeddings, dtype=dtype)
-    emb_bytes = emb_array.tobytes()
+        if q.dtype == "FLOAT32":
+            dtype = np.float32
+        elif q.dtype == "FLOAT16":
+            dtype = np.float16
+        elif q.dtype == "FLOAT64":
+            dtype = np.float64
+        else:
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"dtype not supported"
+            )
 
-    clientRd = RdsWr(r)
+        emb_array = np.array(q.embeddings, dtype=dtype)
+        emb_bytes = emb_array.tobytes()
 
-    key = None
-    try:
-        key = await clientRd.send(q, emb_bytes)
-    except Exception as e:
+        clientRd = RdsWr(r)
+
+        key = None
+        try:
+            key = await clientRd.send(q, emb_bytes)
+        except Exception as e:
             print(f"Error saving chunk: {e}")
 
-    return {"status": "ok", "key": key}
+        return {"status": "ok", "key": key}
+
+    elif type_co == "Qdrant":
+
+        clientQdr = QdrantWr(r)
+
+        key = None
+        try:
+            key = await clientQdr.send(q)
+        except Exception as e:
+            print(f"Error saving chunk: {e}")
+
+        return {"status": "ok", "key": key}
 
 @app.post("/rag/query-rag", dependencies=[Depends(verify_api_key)])
 async def query_rag(q: QueryRAG, request: Request):
+
+    conf = getattr(request.app.state, "aquiles_config", {}) or {}
+    type_co = conf.get("type_c", "Redis")
     r = request.app.state.con
+    
+    if type_co == "Redis":
 
-    if q.dtype == "FLOAT32":
-        dtype = np.float32
-    elif q.dtype == "FLOAT16":
-        dtype = np.float16
-    elif q.dtype == "FLOAT64":
-        dtype = np.float64
-    else:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="dtype not supported")
 
-    emb_array = np.array(q.embeddings, dtype=dtype)
-    emb_bytes = emb_array.tobytes()
+        if q.dtype == "FLOAT32":
+            dtype = np.float32
+        elif q.dtype == "FLOAT16":
+            dtype = np.float16
+        elif q.dtype == "FLOAT64":
+            dtype = np.float64
+        else:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="dtype not supported")
 
-    clientRd = RdsWr(r)
+        emb_array = np.array(q.embeddings, dtype=dtype)
+        emb_bytes = emb_array.tobytes()
 
-    results = await clientRd.query(q, emb_bytes)
+        clientRd = RdsWr(r)
 
-    return {"status": "ok", "total": len(results), "results": results}
+        results = await clientRd.query(q, emb_bytes)
+
+        return {"status": "ok", "total": len(results), "results": results}
+
+    elif type_co == "Qdrant":
+        clientQdr = QdrantWr(r)
+
+        results = await clientQdr.query_qdrant(q, q.embeddings)
+
+        return {"status": "ok", "total": len(results), "results": results}
 
 
 @app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)])
 async def drop_index(q: DropIndex, request: Request):
-    r = request.app.state.con
-    try:
 
-        clientRd = RdsWr(r)
-        r = await clientRd.drop_index(q)
-        return r
-    except Exception as e:
-        print(f"Delete error: {e}")
-        raise HTTPException(500, f"Delete error: {e}")
+    conf = getattr(request.app.state, "aquiles_config", {}) or {}
+    type_co = conf.get("type_c", "Redis")
+    r = request.app.state.con
+    if type_co == "Redis":
+        try:
+
+            clientRd = RdsWr(r)
+            r = await clientRd.drop_index(q)
+            return r
+        except Exception as e:
+            print(f"Delete error: {e}")
+            raise HTTPException(500, f"Delete error: {e}")
+
+    elif type_co == "Qdrant":
+        try:
+            clientQdr = QdrantWr(r)
+            r = await clientQdr.drop_index(q)
+            return r
+        except Exception as e:
+            print(f"Delete error: {e}")
+            raise HTTPException(500, f"Delete error: {e}")
 
 # All of these are routes for the UI. I'm going to try to make them as minimal as possible so as not to affect performance.
 
@@ -221,24 +261,37 @@ async def login_ui(request: Request):
 @app.get("/ui/configs")
 async def get_configs(request: Request, user: str = Depends(get_current_user)):
     try:
+        indices = []
+
         r = request.app.state.con
 
-        clientRd = RdsWr(r)
+        conf = getattr(request.app.state, "aquiles_config", {}) or {}
+        type_co = conf.get("type_c", "Redis")
+        
+        if type_co == "Redis":
+            
 
-        indices = await clientRd.get_ind()
+            clientRd = RdsWr(r)
 
-        configs = app.state.aquiles_config
-        return {"local": configs["local"],
-                "host": configs["host"],
-                "port": configs["port"],
-                "usernanme": configs["usernanme"],
-                "password": configs["password"],
-                "cluster_mode": configs["cluster_mode"],
-                "ssl_cert": configs["ssl_cert"], 
-                "ssl_key": configs["ssl_key"],
-                "ssl_ca": configs["ssl_ca"],
-                "allows_api_keys": configs["allows_api_keys"],
-                "allows_users": configs["allows_users"],
+            indices = await clientRd.get_ind()
+
+        elif type_co == "Qdrant":
+            clientQdr = QdrantWr(r)
+
+            indices = await clientQdr.get_ind()
+
+            
+        return {"local": conf["local"],
+                "host": conf["host"],
+                "port": conf["port"],
+                "usernanme": conf["usernanme"],
+                "password": conf["password"],
+                "cluster_mode": conf["cluster_mode"],
+                "ssl_cert": conf["ssl_cert"], 
+                "ssl_key": conf["ssl_key"],
+                "ssl_ca": conf["ssl_ca"],
+                "allows_api_keys": conf["allows_api_keys"],
+                "allows_users": conf["allows_users"],
                 "indices": indices
                 }
     except HTTPException:
@@ -287,6 +340,9 @@ async def protected_redoc_ui(request: Request, user: str = Depends(get_current_u
 @app.get("/status/ram")
 async def get_status_ram(request: Request) -> Dict[str, Any]:
 
+    conf = getattr(request.app.state, "aquiles_config", {}) or {}
+    type_co = conf.get("type_c", "Redis")
+
     proc = psutil.Process(os.getpid())
     mem_info = proc.memory_info()
     app_metrics = {
@@ -294,12 +350,19 @@ async def get_status_ram(request: Request) -> Dict[str, Any]:
         "process_cpu_percent": proc.cpu_percent(interval=0.1),
     }
 
+    redis_metrics = {}
+
     try:
-        r = request.app.state.con
+        if type_co == "Redis":
+            r = request.app.state.con
 
-        clientRd = RdsWr(r)
+            clientRd = RdsWr(r)
 
-        redis_metrics = await clientRd.get_status_ram()
+            redis_metrics = await clientRd.get_status_ram()
+        
+        elif type_co == "Qdrant":
+
+            redis_metrics = {"error": f"In Qdrant you can't get the metrics :("}
 
     except Exception as e:
         redis_metrics = {
@@ -321,14 +384,26 @@ async def liveness():
 
 @app.get("/health/ready", tags=["health"])
 async def readiness(request: Request):
+    conf = getattr(request.app.state, "aquiles_config", {}) or {}
+    type_co = conf.get("type_c", "Redis")
     r = request.app.state.con
-    try:
-        clientRd = RdsWr(r)
+    if type_co == "Redis":
+        try:
+            clientRd = RdsWr(r)
 
-        await clientRd.ready()
-        return {"status": "ready"}
-    except:
-        raise HTTPException(503, "Redis unavailable")
+            await clientRd.ready()
+        except:
+            raise HTTPException(503, "Redis unavailable")
+
+    elif type_co == "Qdrant":
+        try:
+            clientQdr = QdrantWr(r)
+
+            await clientQdr.ready()
+        except:
+            raise HTTPException(503, "Qdrant unavailable")
+
+    return {"status": "ready"}
 
 app.add_middleware(
     CORSMiddleware,
