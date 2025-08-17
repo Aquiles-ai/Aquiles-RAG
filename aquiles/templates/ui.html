@@ -95,7 +95,7 @@
                     </h2>
                     <button onclick="toggleConfig()" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
                         </svg>
                     </button>
                 </div>
@@ -105,21 +105,30 @@
 
                 <!-- Configuration Form -->
                 <form id="configForm" class="space-y-8">
+                    <!-- Database Type Indicator -->
+                    <div id="dbTypeIndicator" class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-4 mb-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span class="text-sm font-medium text-gray-700 font-inter">Connected to: </span>
+                            <span id="dbTypeName" class="text-lg font-bold text-gray-900 font-lora">Loading...</span>
+                        </div>
+                    </div>
+
                     <!-- Redis Configuration Section -->
-                    <div class="border border-gray-200 rounded-2xl p-6">
+                    <div id="redisConfig" class="border border-gray-200 rounded-2xl p-6 hidden">
                         <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Redis Configuration</h3>
                         
                         <!-- Connection Type -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div>
                                 <label class="flex items-center space-x-3 cursor-pointer">
-                                    <input type="checkbox" id="local" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <input type="checkbox" id="redis_local" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
                                     <span class="text-sm font-medium text-gray-700 font-inter">Local Redis</span>
                                 </label>
                             </div>
                             <div>
                                 <label class="flex items-center space-x-3 cursor-pointer">
-                                    <input type="checkbox" id="cluster_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <input type="checkbox" id="redis_cluster_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
                                     <span class="text-sm font-medium text-gray-700 font-inter">Cluster Mode</span>
                                 </label>
                             </div>
@@ -128,24 +137,24 @@
                         <!-- Host and Port -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div>
-                                <label for="host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
-                                <input type="text" id="host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <label for="redis_host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
+                                <input type="text" id="redis_host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
                             </div>
                             <div>
-                                <label for="port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
-                                <input type="number" id="port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <label for="redis_port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
+                                <input type="number" id="redis_port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
                             </div>
                         </div>
 
                         <!-- Authentication -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div>
-                                <label for="username" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
-                                <input type="text" id="username" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <label for="redis_username" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Username</label>
+                                <input type="text" id="redis_username" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
                             </div>
                             <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
-                                <input type="password" id="password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                <label for="redis_password" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Password</label>
+                                <input type="password" id="redis_password" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
                             </div>
                         </div>
 
@@ -153,23 +162,86 @@
                         <div class="border-t border-gray-200 pt-6">
                             <div class="mb-4">
                                 <label class="flex items-center space-x-3 cursor-pointer">
-                                    <input type="checkbox" id="tls_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                    <input type="checkbox" id="redis_tls_mode" class="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
                                     <span class="text-sm font-medium text-gray-700 font-inter">Enable SSL/TLS</span>
                                 </label>
                             </div>
 
-                            <div id="sslFields" class="space-y-4 hidden">
+                            <div id="redisSSLFields" class="space-y-4 hidden">
                                 <div>
-                                    <label for="ssl_cert" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Certificate Path</label>
-                                    <input type="text" id="ssl_cert" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/cert.pem">
+                                    <label for="redis_ssl_cert" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Certificate Path</label>
+                                    <input type="text" id="redis_ssl_cert" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/cert.pem">
                                 </div>
                                 <div>
-                                    <label for="ssl_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Key Path</label>
-                                    <input type="text" id="ssl_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/key.pem">
+                                    <label for="redis_ssl_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL Key Path</label>
+                                    <input type="text" id="redis_ssl_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/key.pem">
                                 </div>
                                 <div>
-                                    <label for="ssl_ca" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL CA Path</label>
-                                    <input type="text" id="ssl_ca" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/ca.pem">
+                                    <label for="redis_ssl_ca" class="block text-sm font-medium text-gray-700 mb-2 font-inter">SSL CA Path</label>
+                                    <input type="text" id="redis_ssl_ca" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 font-mono text-sm" placeholder="/path/to/ca.pem">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Qdrant Configuration Section -->
+                    <div id="qdrantConfig" class="border border-gray-200 rounded-2xl p-6 hidden">
+                        <h3 class="text-xl font-bold mb-4 text-gray-900 font-lora">Qdrant Configuration</h3>
+                        
+                        <!-- Connection Type -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="qdrant_local" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Local Qdrant</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label class="flex items-center space-x-3 cursor-pointer">
+                                    <input type="checkbox" id="qdrant_prefer_grpc" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <span class="text-sm font-medium text-gray-700 font-inter">Prefer gRPC</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Host and Port -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label for="qdrant_host" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Host</label>
+                                <input type="text" id="qdrant_host" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                            <div>
+                                <label for="qdrant_port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Port</label>
+                                <input type="number" id="qdrant_port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                            </div>
+                        </div>
+
+                        <!-- gRPC Configuration -->
+                        <div id="qdrantGrpcFields" class="border-t border-gray-200 pt-6 mb-6 hidden">
+                            <h4 class="text-lg font-semibold mb-4 text-gray-800 font-lora">gRPC Configuration</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="qdrant_grpc_port" class="block text-sm font-medium text-gray-700 mb-2 font-inter">gRPC Port</label>
+                                    <input type="number" id="qdrant_grpc_port" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                </div>
+                                <div>
+                                    <label for="qdrant_grpc_options" class="block text-sm font-medium text-gray-700 mb-2 font-inter">gRPC Options (JSON)</label>
+                                    <textarea id="qdrant_grpc_options" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-mono text-sm resize-none" placeholder='{"option": "value"}'></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cloud Authentication -->
+                        <div class="border-t border-gray-200 pt-6">
+                            <h4 class="text-lg font-semibold mb-4 text-gray-800 font-lora">Cloud Authentication</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="qdrant_api_key" class="block text-sm font-medium text-gray-700 mb-2 font-inter">API Key</label>
+                                    <input type="password" id="qdrant_api_key" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
+                                </div>
+                                <div>
+                                    <label for="qdrant_auth_token_provider" class="block text-sm font-medium text-gray-700 mb-2 font-inter">Auth Token Provider</label>
+                                    <input type="text" id="qdrant_auth_token_provider" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 font-mono text-sm">
                                 </div>
                             </div>
                         </div>
@@ -537,6 +609,8 @@
     let currentConfig = {};
     let availableApiKeys = [];
 
+    let currentDbType = 'Redis'; // Track current database type
+
     // Initialize OpenAI client
     async function initializeOpenAI() {
         return new Promise((resolve, reject) => {
@@ -626,23 +700,22 @@
             currentConfig = config;
             availableApiKeys = config.allows_api_keys || [];
             
-            // Populate form fields
-            document.getElementById('local').checked = config.local || false;
-            document.getElementById('host').value = config.host || '';
-            document.getElementById('port').value = config.port || '';
-            document.getElementById('username').value = config.username || '';
-            document.getElementById('password').value = config.password || '';
-            document.getElementById('cluster_mode').checked = config.cluster_mode || false;
-            document.getElementById('tls_mode').checked = config.tls_mode || false;
-            document.getElementById('ssl_cert').value = config.ssl_cert || '';
-            document.getElementById('ssl_key').value = config.ssl_key || '';
-            document.getElementById('ssl_ca').value = config.ssl_ca || '';
+            // Detect database type based on available fields
+            if (config.hasOwnProperty('prefer_grpc') || config.hasOwnProperty('api_key') || config.hasOwnProperty('auth_token_provider')) {
+                currentDbType = 'Qdrant';
+                showQdrantConfig(config);
+            } else {
+                currentDbType = 'Redis';
+                showRedisConfig(config);
+            }
             
-            // Populate API keys
+            // Update database type indicator
+            document.getElementById('dbTypeName').textContent = currentDbType;
+            
+            // Populate common fields (API keys and users)
             const apiKeys = config.allows_api_keys || [];
             document.getElementById('allows_api_keys').value = apiKeys.join('\n');
             
-            // Populate users
             const users = config.allows_users || [];
             const usersContainer = document.getElementById('usersContainer');
             usersContainer.innerHTML = '';
@@ -659,11 +732,48 @@
             updateIndicesList(config.indices || []);
             updateIndexSelects(config.indices || []);
             
-            toggleSSLFields();
             showStatus('Configuration loaded successfully');
         } catch (error) {
             showStatus('Error loading configuration: ' + error.message, true);
         }
+    }
+
+    function showRedisConfig(config) {
+        // Hide Qdrant config, show Redis config
+        document.getElementById('qdrantConfig').classList.add('hidden');
+        document.getElementById('redisConfig').classList.remove('hidden');
+        
+        // Populate Redis fields
+        document.getElementById('redis_local').checked = config.local || false;
+        document.getElementById('redis_host').value = config.host || '';
+        document.getElementById('redis_port').value = config.port || '';
+        document.getElementById('redis_username').value = config.username || '';
+        document.getElementById('redis_password').value = config.password || '';
+        document.getElementById('redis_cluster_mode').checked = config.cluster_mode || false;
+        document.getElementById('redis_tls_mode').checked = config.tls_mode || false;
+        document.getElementById('redis_ssl_cert').value = config.ssl_cert || '';
+        document.getElementById('redis_ssl_key').value = config.ssl_key || '';
+        document.getElementById('redis_ssl_ca').value = config.ssl_ca || '';
+        
+        toggleRedisSSLFields();
+    }
+
+    function showQdrantConfig(config) {
+        // Hide Redis config, show Qdrant config
+        document.getElementById('redisConfig').classList.add('hidden');
+        document.getElementById('qdrantConfig').classList.remove('hidden');
+        
+        // Populate Qdrant fields
+        document.getElementById('qdrant_local').checked = config.local || false;
+        document.getElementById('qdrant_host').value = config.host || '';
+        document.getElementById('qdrant_port').value = config.port || '';
+        document.getElementById('qdrant_prefer_grpc').checked = config.prefer_grpc || false;
+        document.getElementById('qdrant_grpc_port').value = config.grpc_port || '';
+        document.getElementById('qdrant_grpc_options').value = config.grpc_options ? JSON.stringify(config.grpc_options, null, 2) : '';
+        document.getElementById('qdrant_api_key').value = config.api_key || '';
+        document.getElementById('qdrant_auth_token_provider').value = config.auth_token_provider || '';
+        
+        toggleQdrantGrpcFields();
     }
 
     // Update indices list display
@@ -973,14 +1083,25 @@
         }
     }
 
-    function toggleSSLFields() {
-        const tlsMode = document.getElementById('tls_mode').checked;
-        const sslFields = document.getElementById('sslFields');
+    function toggleRedisSSLFields() {
+        const tlsMode = document.getElementById('redis_tls_mode').checked;
+        const sslFields = document.getElementById('redisSSLFields');
         
         if (tlsMode) {
             sslFields.classList.remove('hidden');
         } else {
             sslFields.classList.add('hidden');
+        }
+    }
+
+    function toggleQdrantGrpcFields() {
+        const grpcMode = document.getElementById('qdrant_prefer_grpc').checked;
+        const grpcFields = document.getElementById('qdrantGrpcFields');
+        
+        if (grpcMode) {
+            grpcFields.classList.remove('hidden');
+        } else {
+            grpcFields.classList.add('hidden');
         }
     }
 
@@ -993,21 +1114,51 @@
         
         const users = collectUsersData();
         
-        const formData = {
-            local: document.getElementById('local').checked,
-            host: document.getElementById('host').value || null,
-            port: parseInt(document.getElementById('port').value) || null,
-            username: document.getElementById('username').value || null,
-            password: document.getElementById('password').value || null,
-            cluster_mode: document.getElementById('cluster_mode').checked,
-            tls_mode: document.getElementById('tls_mode').checked,
-            ssl_cert: document.getElementById('ssl_cert').value || null,
-            ssl_key: document.getElementById('ssl_key').value || null,
-            ssl_ca: document.getElementById('ssl_ca').value || null,
-            allows_api_keys: apiKeys.length > 0 ? apiKeys : null,
-            allows_users: users.length > 0 ? users : null,
-        };
+        let formData = {};
         
+        if (currentDbType === 'Redis') {
+            formData = {
+                local: document.getElementById('redis_local').checked,
+                host: document.getElementById('redis_host').value || null,
+                port: parseInt(document.getElementById('redis_port').value) || null,
+                username: document.getElementById('redis_username').value || null,
+                password: document.getElementById('redis_password').value || null,
+                cluster_mode: document.getElementById('redis_cluster_mode').checked,
+                tls_mode: document.getElementById('redis_tls_mode').checked,
+                ssl_cert: document.getElementById('redis_ssl_cert').value || null,
+                ssl_key: document.getElementById('redis_ssl_key').value || null,
+                ssl_ca: document.getElementById('redis_ssl_ca').value || null,
+            };
+        } else if (currentDbType === 'Qdrant') {
+            // Parse gRPC options JSON
+            let grpcOptions = null;
+            const grpcOptionsText = document.getElementById('qdrant_grpc_options').value.trim();
+            if (grpcOptionsText) {
+                try {
+                    grpcOptions = JSON.parse(grpcOptionsText);
+                } catch (error) {
+                    showStatus('Invalid JSON in gRPC options: ' + error.message, true);
+                    return;
+                }
+            }
+            
+            formData = {
+                local: document.getElementById('qdrant_local').checked,
+                host: document.getElementById('qdrant_host').value || null,
+                port: parseInt(document.getElementById('qdrant_port').value) || null,
+                prefer_grpc: document.getElementById('qdrant_prefer_grpc').checked,
+                grpc_port: parseInt(document.getElementById('qdrant_grpc_port').value) || null,
+                grpc_options: grpcOptions,
+                api_key: document.getElementById('qdrant_api_key').value || null,
+                auth_token_provider: document.getElementById('qdrant_auth_token_provider').value || null,
+            };
+        }
+        
+        // Add common fields
+        formData.allows_api_keys = apiKeys.length > 0 ? apiKeys : null;
+        formData.allows_users = users.length > 0 ? users : null;
+        
+        // Clean up null values
         Object.keys(formData).forEach(key => {
             if (formData[key] === null || formData[key] === '') {
                 delete formData[key];
@@ -1018,7 +1169,9 @@
     });
 
     // Event listeners
-    document.getElementById('tls_mode').addEventListener('change', toggleSSLFields);
+    document.getElementById('redis_tls_mode').addEventListener('change', toggleRedisSSLFields);
+    document.getElementById('qdrant_prefer_grpc').addEventListener('change', toggleQdrantGrpcFields);
+    
     document.getElementById('rawText').addEventListener('input', updateWordCount);
     
     document.getElementById('configPanel').addEventListener('click', (e) => {
@@ -1107,6 +1260,10 @@
             confirmOpenAIKey();
         }
     });
+
+    function toggleSSLFields() {
+        // This function is now replaced by toggleRedisSSLFields and toggleQdrantGrpcFields
+    }
 </script>
 
 <style>
