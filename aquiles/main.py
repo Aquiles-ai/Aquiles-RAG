@@ -8,10 +8,11 @@ from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from datetime import timedelta
 from typing import Dict, Any
 import numpy as np
-from aquiles.configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config
+from aquiles.configs import load_aquiles_config, save_aquiles_configs
+from aquiles.utils import create_config_cli
 from aquiles.connection import get_connectionAll
 from aquiles.schemas import RedsSch
-from aquiles.wrapper import RdsWr
+from aquiles.wrapper import RdsWr, QdrantWr
 from aquiles.models import QueryRAG, SendRAG, CreateIndex, EditsConfigs, DropIndex
 from aquiles.utils import verify_api_key
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
@@ -21,6 +22,7 @@ import pathlib
 from contextlib import asynccontextmanager
 import psutil
 import inspect
+import traceback
 
 
 @asynccontextmanager
@@ -66,39 +68,57 @@ templates_dir = os.path.join(package_dir, "templates")
 templates = Jinja2Templates(directory=templates_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
-init_aquiles_config()
+create_config_cli()
 
 
 @app.post("/create/index", dependencies=[Depends(verify_api_key)])
 async def create_index(q: CreateIndex, request: Request):
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
-    type_co = conf.get("type_co", "Redis")
+    type_co = conf.get("type_c", "Redis")
 
-    if type_co != "Redis":
-        raise HTTPException(status_code=400, detail="Index creation with Qdrant has not been implemented yet :(")
+    if type_co == "Redis":
 
-    r = request.app.state.con  
-    if not hasattr(r, "ft"):
-        raise HTTPException(status_code=500, detail="Invalid or uninitialized Redis connection.")
+        r = request.app.state.con  
+        if not hasattr(r, "ft"):
+            raise HTTPException(status_code=500, detail="Invalid or uninitialized Redis connection.")
 
-    clientRd = RdsWr(r)
+        clientRd = RdsWr(r)
 
-    schema = await RedsSch(q)
-    try:
-        await clientRd.create_index(index_name=q.indexname, delete_the_index_if_it_exists=q.delete_the_index_if_it_exists,
-        schema=schema)
-    except Exception as e:
-        print(e)
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating index: {e}"
-        )
+        schema = await RedsSch(q)
+        try:
+            await clientRd.create_index(index_name=q.indexname, delete_the_index_if_it_exists=q.delete_the_index_if_it_exists,
+            schema=schema)
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error creating index: {e}"
+            )
 
-    return {
-        "status": "success",
-        "index": q.indexname,
-        "fields": [f.name for f in schema]
-    }
+        return {
+            "status": "success",
+            "index": q.indexname,
+            "fields": [f.name for f in schema]
+        }
+
+    elif type_co == "Qdrant":
+        qr = request.app.state.con
+
+        clientQdr = QdrantWr(qr)
+
+        try:
+            await clientQdr.create_index(q)
+        except Exception as e:
+            traceback.print_exc()
+            print("Error detallado creating index:", repr(e))
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error creating index: {e}"
+            )
+
+        return {
+            "status": "success",
+            "index": q.indexname}
 
 @app.post("/rag/create", dependencies=[Depends(verify_api_key)])
 async def send_rag(q: SendRAG, request: Request):

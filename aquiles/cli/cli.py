@@ -1,5 +1,6 @@
 import click
 from aquiles.configs import load_aquiles_config, save_aquiles_configs
+from aquiles.utils import create_config_cli
 import os
 import importlib.util
 from aquiles.utils import checkout
@@ -17,42 +18,9 @@ def greet(name):
     click.echo(f"Hello, {name}!")
 
 @cli.command("configs")
-@click.option("--local", type=bool, default=None, help="Set whether the Redis server runs locally")
-@click.option("--host", default=None, help="Redis service host")
-@click.option("--port", type=int, default=None, help="Redis service port")
-@click.option("--username", default=None, help="Redis username (if any)")
-@click.option("--password", default=None, help="Redis password (if any)")
-@click.option("--cluster-mode", type=bool, default=None, help="Enable Redis Cluster mode")
-@click.option("--tls-mode", type=bool, default=None, help="Enable SSL/TLS connection")
-@click.option("--ssl-cert", default=None, help="Absolute path to SSL cert")
-@click.option("--ssl-key", default=None, help="Absolute path to SSL key")
-@click.option("--ssl-ca", default=None, help="Absolute path to SSL CA")
-def save_configs(local, host, port,
-                 username, password,
-                 cluster_mode, tls_mode,
-                 ssl_cert, ssl_key, ssl_ca):
+def save_configs():
     try:
-        configs = asyncio.run(load_aquiles_config())
-
-        updates = {
-            "local": local,
-            "host": host,
-            "port": port,
-            "username": username,
-            "password": password,
-            "cluster_mode": cluster_mode,
-            "tls_mode": tls_mode,
-            "ssl_cert": ssl_cert,
-            "ssl_key": ssl_key,
-            "ssl_ca": ssl_ca,
-        }
-        for key, val in updates.items():
-            if val is not None:
-                configs[key] = val
-
-        save_aquiles_configs(configs)
-        click.echo("✅ Configuration updated successfully.")
-
+        create_config_cli(False)
     except Exception as e:
         click.echo(f"❌ Error saving configuration: {e}")
 

@@ -1,1 +1,1 @@
-from .configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config, AllowedUser, InitConfigsRedis, InitConfigsQdrant
+from .configs import load_aquiles_config, save_aquiles_configs, init_aquiles_config, AllowedUser, InitConfigsRedis, InitConfigsQdrant, init_aquiles_config_v2, AQUILES_CONFIG

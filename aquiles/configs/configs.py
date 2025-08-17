@@ -1,10 +1,11 @@
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from platformdirs import user_data_dir
 import json
 from pydantic import BaseModel, Field
 import aiofiles
 import asyncio
+from pathlib import Path
 
 _load_lock = asyncio.Lock()
 
@@ -51,15 +52,30 @@ class InitConfigsQdrant(BaseModel):
     )
 
 def init_aquiles_config() -> None:
-    """
-    Creates achilles config.json with the default values from InitConfigs if it doesn't exist. Does nothing if it's already present.
-    """
     if not os.path.exists(AQUILES_CONFIG):
-        # Instancia EditsConfigs con sus valores por defecto
+
         default_configs = InitConfigsRedis().dict()
-        # Guarda el JSON formateado
+
         with open(AQUILES_CONFIG, "w", encoding="utf-8") as f:
             json.dump(default_configs, f, ensure_ascii=False, indent=2)
+
+def init_aquiles_config_v2(cfg: Union[InitConfigsRedis, InitConfigsQdrant], force: bool = False) -> None:
+    if not isinstance(cfg, (InitConfigsRedis, InitConfigsQdrant)):
+        raise TypeError("An instance of InitConfigsRedis or InitConfigsQdrant must be passed")
+
+    try:
+        conf = cfg.dict()
+    except Exception:
+        conf = cfg.model_dump()
+
+    config_path = Path(AQUILES_CONFIG)
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if config_path.exists() and not force:
+        return
+
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(conf, f, ensure_ascii=False, indent=2)
 
 #def load_aquiles_config():
 #    if os.path.exists(AQUILES_CONFIG):
