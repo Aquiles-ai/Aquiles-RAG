@@ -1,0 +1,37 @@
+import os
+from dotenv import load_dotenv
+from pathlib import Path
+from aquiles.deploy_config import DeployConfigQdrant, gen_configs_file
+from aquiles.configs import AllowedUser
+
+env_path = Path('.') / '.env'
+load_dotenv(dotenv_path=env_path)
+
+HOST = os.getenv('HOST', 'fe2.gcp.cloud.qdrant.io')
+PORT = int(os.getenv('PORT', 6333))
+API_KEY_QDRANT = os.getenv('API_KEY_QDRANT', 'dummy-api-key')
+
+# If you are going to use gRPC make sure you have the gRPC port and set the gRPC options
+
+GPRC_PORT = int(os.getenv('GPRC_PORT', 6334))
+
+# GRPC_OPT = os.getenv('GRPC_OPT')
+
+API_KEYS = ["dummy-api-key", "idk-api-key"]
+
+users = [AllowedUser(username="root", password="root"), 
+            AllowedUser(username="supersu", password="supersu")]
+
+dp_cfg = DeployConfigQdrant(local=False,
+        host=HOST,
+        port=PORT,
+        prefer_grpc=False,
+        grpc_port=GPRC_PORT,
+        api_key=API_KEY_QDRANT,
+        allows_api_keys=API_KEYS,
+        allows_users=users,
+        ALGORITHM="HS256")
+
+def run():
+    print("Generating the configs file")
+    gen_configs_file(dp_cfg, force=True)
