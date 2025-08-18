@@ -10,7 +10,7 @@ from pathlib import Path
 from aquiles.deploy_config import DeployConfigRd, gen_configs_file
 from aquiles.configs import AllowedUser
 
-# You must set all configuration options with the 'DeployConfig' class
+# You must set all configuration options with the 'DeployConfigRd' class
 
 env_path = Path('.') / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -40,3 +40,4 @@ dp_cfg = DeployConfigRd(
 def run():
     print("Generating the configs file")
     gen_configs_file(dp_cfg, force=True)
+

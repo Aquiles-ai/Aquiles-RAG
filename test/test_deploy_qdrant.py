@@ -1,3 +1,10 @@
+"""
+This is an example of a file that will be used to deploy Aquiles-RAG to providers 
+like Render using Qdrant as the RAG, you have to create a requirements.txt with "aquiles-rag" as 
+the only module to install, and in the command to launch the service 
+you have to use "quiles-rag deploy --host "0.0.0.0" --port 5500 --workers 4 your_config_file.py"
+"""
+
 import os
 from dotenv import load_dotenv
 from pathlib import Path
