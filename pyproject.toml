@@ -50,7 +50,9 @@ dependencies = [
     "pydantic[email]",
     "PyJWT",
     "psutil",
-    "aiofiles"
+    "aiofiles",
+    "qdrant-client",
+    "qdrant-client[fastembed]"
 ]
 
 [project.optional-dependencies]

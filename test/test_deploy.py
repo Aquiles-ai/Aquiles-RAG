@@ -1,13 +1,13 @@
 """
-This is an example of a file that will be used to deploy Aquiles-RAG in 
-providers like Render, you have to create a requirements.txt with "aquiles-rag" as 
+This is an example of a file that will be used to deploy Aquiles-RAG to providers 
+like Render using Redis as the RAG, you have to create a requirements.txt with "aquiles-rag" as 
 the only module to install, and in the command to launch the service 
 you have to use "quiles-rag deploy --host "0.0.0.0" --port 5500 --workers 4 your_config_file.py"
 """
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-from aquiles.deploy_config import DeployConfig, gen_configs_file
+from aquiles.deploy_config import DeployConfigRd, gen_configs_file
 from aquiles.configs import AllowedUser
 
 # You must set all configuration options with the 'DeployConfig' class
@@ -25,12 +25,13 @@ apikeys = ["dummy-api-key", "secure-api-key"]
 users = [AllowedUser(username="root", password="root"),
         AllowedUser(username="supersu", password="supersu")]
 
-dp_cfg = DeployConfig(
+dp_cfg = DeployConfigRd(
     local=False, host=REDIS_HOST,
     port=REDIS_PORT, username=REDIS_USER, password=REDIS_PASSWORD, cluster_mode=False,
     tls_mode=False, ssl_cert="", ssl_key="", ssl_ca="",
     allows_api_keys=apikeys,
     allows_users=users,
+    initial_cap=200,
     ALGORITHM="HS256"
 )
 
@@ -38,4 +39,4 @@ dp_cfg = DeployConfig(
 
 def run():
     print("Generating the configs file")
-    gen_configs_file(dp_cfg)
+    gen_configs_file(dp_cfg, force=True)
