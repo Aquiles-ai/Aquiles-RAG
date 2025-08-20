@@ -6,9 +6,12 @@ from aquiles.models import SendRAG, DropIndex, QueryRAG
 from typing import Dict, Any
 from aquiles.utils import _escape_tag
 from redis.commands.search.query import Query
+import redis.asyncio as redisA
+from redis.asyncio.cluster import RedisCluster
+from typing import Union
 
 class RdsWr:
-    def __init__(self, client):
+    def __init__(self, client: Union[redisA.Redis, RedisCluster]):
         self.client = client
 
     async def create_index(self, index_name: str, delete_the_index_if_it_exists: bool = False,

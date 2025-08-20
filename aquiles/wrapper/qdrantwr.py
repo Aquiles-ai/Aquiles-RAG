@@ -7,10 +7,11 @@ from qdrant_client.models import (
 )
 from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
 import asyncio
+from qdrant_client import AsyncQdrantClient
 
 
 class QdrantWr:
-    def __init__(self, client):
+    def __init__(self, client: AsyncQdrantClient):
 
         self.client = client
         self._lock = asyncio.Lock()
