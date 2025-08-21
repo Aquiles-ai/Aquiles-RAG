@@ -25,11 +25,11 @@ SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-def authenticate_user(username: str, password: str) -> bool:
+async def authenticate_user(username: str, password: str) -> bool:
     pwd = users_db.get(username)
     return bool(pwd and pwd == password)
 
-def create_access_token(username: str, expires_delta: timedelta) -> str:
+async def create_access_token(username: str, expires_delta: timedelta) -> str:
     to_encode = {"sub": username}
     expire = datetime.utcnow() + expires_delta
     to_encode.update({"exp": expire})
