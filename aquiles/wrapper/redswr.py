@@ -9,36 +9,38 @@ from redis.commands.search.query import Query
 import redis.asyncio as redisA
 from redis.asyncio.cluster import RedisCluster
 from typing import Union
+from aquiles.wrapper.basewrapper import BaseWrapper
+from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
 
-class RdsWr:
+class RdsWr(BaseWrapper):
     def __init__(self, client: Union[redisA.Redis, RedisCluster]):
         self.client = client
 
-    async def create_index(self, index_name: str, delete_the_index_if_it_exists: bool = False,
+    async def create_index(self, q: CreateIndex,
                             schema=None):
-        index = self.client.ft(index_name)
+        index = self.client.ft(q.indexname)
         exists = True
         try:
             await index.info()  
         except redis.ResponseError:
             exists = False
 
-        if exists and not delete_the_index_if_it_exists:
+        if exists and not q.delete_the_index_if_it_exists:
             raise HTTPException(
                 status_code=HTTP_400_BAD_REQUEST,
-                detail=f"Index '{index_name}' already exists. Set delete_the_index_if_it_exists=true to overwrite."
+                detail=f"Index '{q.indexname}' already exists. Set delete_the_index_if_it_exists=true to overwrite."
             )
 
-        if exists and delete_the_index_if_it_exists:
+        if exists and q.delete_the_index_if_it_exists:
             await index.dropindex(delete_documents=False)
 
         definition = IndexDefinition(
-            prefix=[f"{index_name}:"],
+            prefix=[f"{q.indexname}:"],
             index_type=IndexType.HASH
         )
 
         try:
-            await self.client.ft(index_name).create_index(fields=schema, definition=definition)
+            await self.client.ft(q.indexname).create_index(fields=schema, definition=definition)
         except Exception as e:
             print(e)
             raise HTTPException(
@@ -46,7 +48,7 @@ class RdsWr:
                 detail=f"Error creating index: {e}"
             )
 
-    async def send(self, q: SendRAG, emb_bytes):
+    async def send(self, q: SendRAG, emb_bytes=None):
         new_id = await self.client.incr(f"{q.index}:next_id")
 
         key = f"{q.index}:{new_id}"
@@ -77,7 +79,7 @@ class RdsWr:
 
         return key
 
-    async def query(self, q: QueryRAG, emb_bytes):
+    async def query(self, q: QueryRAG, emb_vector):
         model_val = getattr(q, "embedding_model", None)
         if model_val:
             model_val = str(model_val).strip()
@@ -100,7 +102,7 @@ class RdsWr:
         )   
 
         try:
-            res = await self.client.ft(q.index).search(knn_q, {"vec": emb_bytes})
+            res = await self.client.ft(q.index).search(knn_q, {"vec": emb_vector})
         except Exception as e:
             print(f"Search error: {e}")
             raise HTTPException(500, f"Search error: {e}")

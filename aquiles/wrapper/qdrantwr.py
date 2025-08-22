@@ -8,9 +8,10 @@ from qdrant_client.models import (
 from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
 import asyncio
 from qdrant_client import AsyncQdrantClient
+from aquiles.wrapper.basewrapper import BaseWrapper
 
 
-class QdrantWr:
+class QdrantWr(BaseWrapper):
     def __init__(self, client: AsyncQdrantClient):
 
         self.client = client
@@ -88,7 +89,7 @@ class QdrantWr:
             print("Error upserting point to Qdrant: %s", e)
             raise
 
-    async def query_qdrant(self, q: QueryRAG, emb_vector):
+    async def query(self, q: QueryRAG, emb_vector):
 
         model_val = getattr(q, "embedding_model", None)
         query_filter = None

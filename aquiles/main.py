@@ -85,8 +85,7 @@ async def create_index(q: CreateIndex, request: Request):
 
         schema = await RedsSch(q)
         try:
-            await clientRd.create_index(index_name=q.indexname, delete_the_index_if_it_exists=q.delete_the_index_if_it_exists,
-            schema=schema)
+            await clientRd.create_index(q, schema=schema)
         except Exception as e:
             print(e)
             raise HTTPException(
@@ -194,7 +193,7 @@ async def query_rag(q: QueryRAG, request: Request):
     elif type_co == "Qdrant":
         clientQdr = QdrantWr(r)
 
-        results = await clientQdr.query_qdrant(q, q.embeddings)
+        results = await clientQdr.query(q, q.embeddings)
 
         return {"status": "ok", "total": len(results), "results": results}
 
