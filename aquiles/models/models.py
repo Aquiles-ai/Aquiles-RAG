@@ -44,6 +44,37 @@ class CreateIndex(BaseModel):
     )
 
 
+class CreateIndexMultimodal(BaseModel):
+    indexname: str = Field(..., description="Name of the index to create")
+    embeddings_dim_text : int = Field(768, description="Dimension of text embeddings")
+    embeddings_dim_image : int = Field(512, description="Image embedding dimensions")
+    dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = Field(
+        "FLOAT32",
+        description="Embedding data type. Choose from FLOAT32, FLOAT64, or FLOAT16"
+    )
+    delete_the_index_if_it_exists: bool = Field(
+        False,
+        description="If true, will drop any existing index with the same name before creating."
+    )
+
+
+class SendRAGMultimodal(BaseModel):
+    index: str = Field(..., description="Index name in Redis")
+    name_chunk: str = Field(..., description="Human-readable chunk label or name")
+    dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = Field(
+        "FLOAT32",
+        description="Embedding data type. Choose from FLOAT32, FLOAT64, or FLOAT16"
+    )
+    chunk_size: PositiveInt = Field(1024,
+        gt=0,
+        description="Number of tokens in each chunk")
+    caption: str = Field(..., description="Full original text of the chunk")
+    embeddings_caption: List[float] = Field(..., description="Vector of embeddings associated with the chunk")
+    image: str = Field(..., description="Image path")
+    embeddings_image: List[float] = Field(..., description="Image embeddings")
+    embedding_model_caption: str | None = Field(default=None, description="Optional metadata field for the embeddings model")
+    embedding_model_image: str | None = Field(default=None, description="Optional metadata field for the embeddings model")
+
 
 class EditsConfigsReds(BaseModel):
     local: Optional[bool] = Field(None, description="Redis standalone local")
