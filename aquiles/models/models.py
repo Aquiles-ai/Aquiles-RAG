@@ -43,6 +43,8 @@ class CreateIndex(BaseModel):
         description="If true, will drop any existing index with the same name before creating."
     )
 
+    concurrently: bool | None = Field(default=None, description="Option for postgresql")
+
 
 class CreateIndexMultimodal(BaseModel):
     indexname: str = Field(..., description="Name of the index to create")
@@ -56,6 +58,8 @@ class CreateIndexMultimodal(BaseModel):
         False,
         description="If true, will drop any existing index with the same name before creating."
     )
+
+    concurrently: bool | None = Field(default=None, description="Option for postgresql")
 
 
 class SendRAGMultimodal(BaseModel):
