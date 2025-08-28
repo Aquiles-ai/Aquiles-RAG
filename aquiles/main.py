@@ -30,8 +30,8 @@ async def lifespan(app: FastAPI):
     app.state.con = await get_connectionAll()
 
     app.state.aquiles_config = await load_aquiles_config()
-    
-    type_co = app.state.aquiles_config.get("type_co", "Redis")
+
+    type_co = app.state.aquiles_config.get("type_co", app.state.aquiles_config.get("type_c", "Redis"))
     
     try:
         yield
@@ -47,6 +47,13 @@ async def lifespan(app: FastAPI):
                     else:
                         con.aclose()
                 elif hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+                    else:
+                        con.close()
+
+            elif str(type_co) in ("PostgreSQL", "postgresql", "pg", "postgresql+asyncpg"):
+                if hasattr(con, "close"):
                     if inspect.iscoroutinefunction(con.close):
                         await con.close()
                     else:
