@@ -1,4 +1,4 @@
-from aquiles.configs import InitConfigsRedis, InitConfigsQdrant
+from aquiles.configs import InitConfigsRedis, InitConfigsQdrant, InitConfigsPostgreSQL
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 import secrets
@@ -27,7 +27,16 @@ class DeployConfigQdrant(InitConfigsQdrant, BaseSettings):
     )
     ALGORITHM: str = Field("HS256", description="JWT signature algorithm")
 
-def gen_configs_file(config: Union[DeployConfigRd, DeployConfigQdrant], force: bool = False) -> None:
+class DeployConfigPostgreSQL(InitConfigsPostgreSQL, BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore")
+    JWT_SECRET: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(32),
+        description="Secret key to sign JWT"
+    )
+    ALGORITHM: str = Field("HS256", description="JWT signature algorithm")
+
+
+def gen_configs_file(config: Union[DeployConfigRd, DeployConfigQdrant, DeployConfigPostgreSQL], force: bool = False) -> None:
     """
     Creates the configuration file `aquiles_config.json` in the user's data directory
     (for example: ~/.local/share/aquiles/) **only if it doesn't exist**, or overwrites it
