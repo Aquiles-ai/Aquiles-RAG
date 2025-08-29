@@ -6,7 +6,6 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import jwt
 import secrets
-import asyncio
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
@@ -18,14 +17,16 @@ class Settings(BaseSettings):
 
 settings = Settings(ALGORITHM="HS256")
 
-cfg = asyncio.run(load_aquiles_config())
-users_db = {u["username"]: u["password"] for u in cfg.get("allows_users", [])}
+#cfg = load_aquiles_config_sync()
+#users_db = {u["username"]: u["password"] for u in cfg.get("allows_users", [])}
 
 SECRET_KEY = settings.JWT_SECRET
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 async def authenticate_user(username: str, password: str) -> bool:
+    cfg = await load_aquiles_config()
+    users_db = {u["username"]: u["password"] for u in cfg.get("allows_users", [])}
     pwd = users_db.get(username)
     return bool(pwd and pwd == password)
 
@@ -52,6 +53,8 @@ async def get_current_user(token: str = Depends(get_token_from_cookie)) -> str:
     Lanza HTTPException(401) si algo falla.
     """
     try:
+        cfg = await load_aquiles_config()
+        users_db = {u["username"]: u["password"] for u in cfg.get("allows_users", [])}
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
     except jwt.PyJWTError:

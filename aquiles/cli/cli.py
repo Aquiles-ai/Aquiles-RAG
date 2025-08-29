@@ -30,6 +30,7 @@ def serve(host, port):
     try:
         import uvicorn
         from aquiles.main import app
+        create_config_cli()
         uvicorn.run(app, host=host, port=port)
     finally:
         up_to_date, latest = checkout()

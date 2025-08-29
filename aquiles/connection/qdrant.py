@@ -63,8 +63,7 @@ async def get_connectionAll():
                     api_key=api_key,
                     https=(scheme == "https")
                 )
-
-            await client.get_collections()
+                
             return client
 
         except Exception as e:

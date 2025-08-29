@@ -9,7 +9,6 @@ from datetime import timedelta
 from typing import Dict, Any, Union
 import numpy as np
 from aquiles.configs import load_aquiles_config, save_aquiles_configs
-from aquiles.utils import create_config_cli
 from aquiles.connection import get_connectionAll
 from aquiles.schemas import RedsSch
 from aquiles.wrapper import RdsWr, QdrantWr, PostgreSQLRAG
@@ -74,8 +73,6 @@ static_dir = os.path.join(package_dir, "static")
 templates_dir = os.path.join(package_dir, "templates")
 templates = Jinja2Templates(directory=templates_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-create_config_cli()
 
 
 @app.post("/create/index", dependencies=[Depends(verify_api_key)])
