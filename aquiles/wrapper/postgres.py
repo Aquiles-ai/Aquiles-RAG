@@ -5,6 +5,7 @@ from fastapi import HTTPException
 import re
 import json
 from uuid import uuid4
+import logging
 
 Pool = asyncpg.Pool
 IDENT_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
@@ -48,18 +49,20 @@ class PostgreSQLRAG(BaseWrapper):
             raw_text text,
             raw_text_tsv tsvector,
             embedding vector({int(q.embeddings_dim)}) NOT NULL,
-            embedding_model text,   -- single model string, like qdrant payload
+            embedding_model text,
             metadata jsonb,
             created_at timestamptz DEFAULT now()
         );
-        CREATE FUNCTION IF NOT EXISTS chunks_tsv_trigger() RETURNS trigger AS $$
+
+        -- USE CREATE OR REPLACE FUNCTION (NO IF NOT EXISTS)
+        CREATE OR REPLACE FUNCTION chunks_tsv_trigger() RETURNS trigger AS $$
         begin
           new.raw_text_tsv := to_tsvector('spanish', coalesce(new.raw_text,''));
           return new;
         end
         $$ LANGUAGE plpgsql;
-        -- create trigger only if not exists (psql doesn't have CREATE TRIGGER IF NOT EXISTS,
-        -- so we try/catch by checking pg_trigger)
+
+        -- crear trigger solo si no existe
         DO $$
         BEGIN
           IF NOT EXISTS (
@@ -67,7 +70,10 @@ class PostgreSQLRAG(BaseWrapper):
             WHERE tgname = 'chunks_tsv_update'
               AND tgrelid = (quote_ident('public') || '.' || quote_ident($1))::regclass
           ) THEN
-            EXECUTE format('CREATE TRIGGER chunks_tsv_update BEFORE INSERT OR UPDATE ON public.%s FOR EACH ROW EXECUTE PROCEDURE chunks_tsv_trigger();', $1);
+            EXECUTE format(
+              'CREATE TRIGGER chunks_tsv_update BEFORE INSERT OR UPDATE ON public.%s FOR EACH ROW EXECUTE PROCEDURE chunks_tsv_trigger();',
+              $1
+            );
           END IF;
         END
         $$ LANGUAGE plpgsql;
@@ -78,27 +84,39 @@ class PostgreSQLRAG(BaseWrapper):
         concurrently = getattr(q, "concurrently", False)
 
         create_idx_sql = (
-            f"CREATE INDEX {'CONCURRENTLY ' if concurrently else ''}IF NOT EXISTS public.{idx} "
-            f"ON public.{t} USING hnsw (embedding vector_cosine_ops) WITH (m = {int(m)}, ef_construction = {int(ef_construct)});"
+            f"CREATE INDEX {'CONCURRENTLY ' if concurrently else ''}{idx} "
+            f"ON public.{t} USING hnsw (embedding vector_cosine_ops) "
+            f"WITH (m = {int(m)}, ef_construction = {int(ef_construct)});"
         )
 
         async with self.client.acquire() as conn:
             try:
-                create_sql_sub = create_sql.replace("$1", table_unquoted)
+                create_sql_sub = create_sql.replace("$1", f"'{table_unquoted}'")
+                logging.info("create_sql_sub:\n%s", create_sql_sub)
+                logging.info("create_idx_sql:\n%s", create_idx_sql)
 
                 await conn.execute(create_sql_sub)
-                regclass = await conn.fetchval("SELECT to_regclass($1);", f"public.{q.indexname}_embedding_hnsw")
+
+                # chequeo del índice existente (ya lo tenías)
+                regclass = await conn.fetchval(
+                    "SELECT to_regclass($1);",
+                    f"public.{q.indexname}_embedding_hnsw"
+                )
                 if regclass and not q.delete_the_index_if_it_exists:
                     raise HTTPException(400, detail=f"Index public.{q.indexname}_embedding_hnsw exists")
                 if regclass and q.delete_the_index_if_it_exists:
-                    drop_sql = f"DROP INDEX {'CONCURRENTLY ' if concurrently else ''}IF EXISTS public.{idx};"
+                    drop_sql = f"DROP INDEX {'CONCURRENTLY ' if concurrently else ''}IF EXISTS {idx};"
                     await conn.execute(drop_sql)
 
                 try:
-                    await conn.execute(create_idx_sql)
+                    if concurrently:
+                        async with self.client.acquire() as idx_conn:
+                            await idx_conn.execute(create_idx_sql)
+                    else:
+                        await conn.execute(create_idx_sql)
                 except Exception as e:
                     if concurrently and "cannot run CREATE INDEX CONCURRENTLY inside a transaction block" in str(e):
-                        raise HTTPException(500, detail=("CREATE INDEX CONCURRENTLY cannot run inside a transaction block. "
+                        raise HTTPException(500, detail=(f"Error:{e},""CREATE INDEX CONCURRENTLY cannot run inside a transaction block. "
                                                         "Run with concurrently=False or execute the CONCURRENTLY statement on a dedicated connection."))
                     raise
                 ef_runtime = getattr(q, "ef_runtime", 100)
@@ -236,6 +254,7 @@ class PostgreSQLRAG(BaseWrapper):
                 return results
 
             except Exception as e:
+                print(f"Error {e}")
                 raise HTTPException(500, detail=f"Search error: {e}")
 
     async def drop_index(self, q: DropIndex):
