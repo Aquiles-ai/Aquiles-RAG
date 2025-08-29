@@ -12,7 +12,7 @@ from aquiles.configs import load_aquiles_config, save_aquiles_configs
 from aquiles.utils import create_config_cli
 from aquiles.connection import get_connectionAll
 from aquiles.schemas import RedsSch
-from aquiles.wrapper import RdsWr, QdrantWr
+from aquiles.wrapper import RdsWr, QdrantWr, PostgreSQLRAG
 from aquiles.models import QueryRAG, SendRAG, CreateIndex, DropIndex, EditsConfigsReds, EditsConfigsQdrant
 from aquiles.utils import verify_api_key
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
@@ -123,6 +123,23 @@ async def create_index(q: CreateIndex, request: Request):
             "status": "success",
             "index": q.indexname}
 
+    elif type_co == "PostgreSQL":
+        clientPg = PostgreSQLRAG(r)
+
+        try:
+            await clientPg.create_index(q)
+        except Exception as e:
+            traceback.print_exc()
+            print("Error detallado creating index:", repr(e))
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error creating index: {e}"
+            )
+
+        return {
+            "status": "success",
+            "index": q.indexname}   
+
 @app.post("/rag/create", dependencies=[Depends(verify_api_key)])
 async def send_rag(q: SendRAG, request: Request):
 
@@ -169,6 +186,19 @@ async def send_rag(q: SendRAG, request: Request):
 
         return {"status": "ok", "key": key}
 
+    elif type_co == "PostgreSQL":
+        clientPg = PostgreSQLRAG(r)
+
+        key = None
+
+        try:
+            key = await clientPg.send(q)
+        except Exception as e:
+            print(f"Error saving chunk: {e}")
+
+        return {"status": "ok", "key": key}
+
+
 @app.post("/rag/query-rag", dependencies=[Depends(verify_api_key)])
 async def query_rag(q: QueryRAG, request: Request):
 
@@ -204,6 +234,13 @@ async def query_rag(q: QueryRAG, request: Request):
 
         return {"status": "ok", "total": len(results), "results": results}
 
+    elif type_co == "PostgreSQL":
+        clientPg = PostgreSQLRAG(r)
+
+        results = await clientPg.query(q, q.embeddings)
+
+        return {"status": "ok", "total": len(results), "results": results}
+
 
 @app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)])
 async def drop_index(q: DropIndex, request: Request):
@@ -215,8 +252,8 @@ async def drop_index(q: DropIndex, request: Request):
         try:
 
             clientRd = RdsWr(r)
-            r = await clientRd.drop_index(q)
-            return r
+            result = await clientRd.drop_index(q)
+            return result
         except Exception as e:
             print(f"Delete error: {e}")
             raise HTTPException(500, f"Delete error: {e}")
@@ -224,11 +261,21 @@ async def drop_index(q: DropIndex, request: Request):
     elif type_co == "Qdrant":
         try:
             clientQdr = QdrantWr(r)
-            r = await clientQdr.drop_index(q)
-            return r
+            result = await clientQdr.drop_index(q)
+            return result
         except Exception as e:
             print(f"Delete error: {e}")
             raise HTTPException(500, f"Delete error: {e}")
+
+    elif type_co == "PostgreSQL":
+        try:
+            clientPg = PostgreSQLRAG(r)
+            result = await clientPg.drop_index(q)
+            return result
+        except Exception as e:
+            print(f"Delete error: {e}")
+            raise HTTPException(500, f"Delete error: {e}")
+
 
 # All of these are routes for the UI. I'm going to try to make them as minimal as possible so as not to affect performance.
 

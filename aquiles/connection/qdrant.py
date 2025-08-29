@@ -80,7 +80,7 @@ async def get_connectionAll():
         min_size = int(configs.get("min_size", 1))
         max_size = int(configs.get("max_size", 10))
         timeout = float(configs.get("timeout", 60))
-        ssl = configs.get("ssl", None)  
+        max_queries = int(configs.get("max_queries", 50000))
 
         parsed = urlparse(raw_host)
         if parsed.scheme:
@@ -113,7 +113,7 @@ async def get_connectionAll():
                 min_size=min_size,
                 max_size=max_size,
                 timeout=timeout,
-                ssl=ssl
+                max_queries=max_queries
             )
             async with pool.acquire() as conn:
                 val = await conn.fetchval("SELECT 1;")

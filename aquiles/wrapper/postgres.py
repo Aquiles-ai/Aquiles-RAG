@@ -3,6 +3,8 @@ from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
 from aquiles.wrapper.basewrapper import BaseWrapper
 from fastapi import HTTPException
 import re
+import json
+from uuid import uuid4
 
 Pool = asyncpg.Pool
 IDENT_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
@@ -107,10 +109,134 @@ class PostgreSQLRAG(BaseWrapper):
                 raise HTTPException(500, detail=str(e))
 
     async def send(self, q: SendRAG):
-        return await super().send(q)
+        if not IDENT_RE.match(q.index):
+            raise HTTPException(400, detail="Invalid index")
+
+        table_unquoted = _table_name_for_index(q.index)
+        t = _validate_ident(table_unquoted)
+
+        chosen_id = uuid4()
+        embedding_model_val = None
+        try:
+            val = getattr(q, "embedding_model", None)
+            embedding_model_val = None if val is None else str(val).strip()
+        except Exception:
+            embedding_model_val = None
+        embedding_model_val = embedding_model_val or "__unknown__"
+
+        vector = getattr(q, "embeddings", None)
+        if vector is None:
+            raise HTTPException(400, detail="No vector provided in q.embeddings")
+
+        vec_literal = _serialize_vector(vector)  # like "[0.1,0.2,...]"
+
+        insert_sql = f"""
+        INSERT INTO public.{t} (id, resource_id, name_chunk, chunk_id, chunk_size, raw_text, embedding, embedding_model, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6, $7::vector, $8, $9)
+        RETURNING id;
+        """
+
+        async with self.client.acquire() as conn:
+            try:
+                metadata_val = getattr(q, "metadata", None)
+                if isinstance(metadata_val, dict):
+                    metadata_val = json.dumps(metadata_val)
+                row = await conn.fetchrow(
+                    insert_sql,
+                    str(chosen_id),
+                    getattr(q, "resource_id", None),
+                    getattr(q, "name_chunk", None),
+                    str(getattr(q, "chunk_id", chosen_id)),
+                    getattr(q, "chunk_size", None),
+                    getattr(q, "raw_text", None),
+                    vec_literal,  # passed as text, casted to vector by $7::vector
+                    embedding_model_val,
+                    metadata_val
+                )
+                return str(row['id'])
+            except Exception as e:
+                raise HTTPException(500, detail=f"Error inserting point: {e}")
 
     async def query(self, q: QueryRAG, emb_vector):
-        return await super().query(q, emb_vector)
+        if not IDENT_RE.match(q.index):
+            raise HTTPException(400, detail="Invalid index")
+        table_unquoted = _table_name_for_index(q.index)
+        t = _validate_ident(table_unquoted)
+
+        model_val = getattr(q, "embedding_model", None)
+        where_clause = ""
+        params = []
+
+        if model_val:
+            model_val = str(model_val).strip()
+            if model_val:
+                where_clause = "WHERE embedding_model = $2"
+                params.append(model_val)
+
+        ef_runtime = getattr(q, "ef_runtime", None)
+        top_k = int(getattr(q, "top_k", 5))
+
+        vec_literal = _serialize_vector(emb_vector)
+
+
+        query_sql = f"""
+        SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata,
+               (embedding <=> $1::vector) AS distance
+        FROM public.{t}
+        {where_clause}
+        ORDER BY embedding <=> $1::vector
+        LIMIT $3;
+        """
+
+        async with self.client.acquire() as conn:
+            try:
+                if ef_runtime is not None:
+                    await conn.execute(f"SET hnsw.ef_search = {int(ef_runtime)};")
+
+                if where_clause:
+                    rows = await conn.fetch(query_sql, vec_literal, params[0], top_k)
+                else:
+                    rows = await conn.fetch(query_sql, vec_literal, top_k)
+
+                results = []
+                for r in rows:
+                    dist = r['distance']
+                    similarity = None
+                    try:
+                        similarity = 1.0 - float(dist) if dist is not None else None
+                    except Exception:
+                        similarity = None
+
+                    results.append({
+                        "name_chunk": r['name_chunk'],
+                        "chunk_id": str(r['chunk_id']) if r['chunk_id'] is not None else None,
+                        "chunk_size": int(r['chunk_size']) if r['chunk_size'] is not None else None,
+                        "raw_text": r['raw_text'],
+                        "score": similarity,
+                        "embedding_model": r['embedding_model'],
+                    })
+
+
+                if getattr(q, "cosine_distance_threshold", None) is not None:
+                    try:
+                        dist_thr = float(q.cosine_distance_threshold)
+                        filtered = []
+                        for r in results:
+                            s = r.get("score")
+                            if s is None:
+                                continue
+                            distance_like = 1.0 - s 
+                            if distance_like <= dist_thr:
+                                filtered.append(r)
+                        results = filtered
+                    except Exception:
+                        pass
+
+                results = results[: top_k]
+                return results
+
+            except Exception as e:
+                raise HTTPException(500, detail=f"Search error: {e}")
 
     async def drop_index(self, q: DropIndex):
         if not IDENT_RE.match(q.index_name):

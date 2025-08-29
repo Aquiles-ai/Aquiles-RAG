@@ -51,17 +51,26 @@ class InitConfigsQdrant(BaseModel):
         description="Users allowed to access the mini-UI and docs"
     )
 
-def init_aquiles_config() -> None:
-    if not os.path.exists(AQUILES_CONFIG):
+class InitConfigsPostgreSQL(BaseModel):
+    type_c: str = "PostgreSQL"
+    host: str = Field("localhost", description="PostgreSQL Host")
+    port: int = Field(5432, description="PostgreSQL Port")
+    user: str | None = Field(default=None, description="")
+    password: str | None = Field(default=None, description="")
+    database: str | None = Field(default=None, description="")
+    min_size: int = Field(default=1, description="")
+    max_size: int = Field(default=100, description="")
+    max_queries: int = Field(default=50000, description="")
+    timeout: float = Field(default=60.0, description="")
+    allows_api_keys: List[str] = Field( default_factory=lambda: [""], description="API KEYS allowed to make requests")
+    allows_users: List[AllowedUser] = Field( default_factory=lambda: [AllowedUser(username="root", password="root")],
+        description="Users allowed to access the mini-UI and docs"
+    )
 
-        default_configs = InitConfigsRedis().dict()
 
-        with open(AQUILES_CONFIG, "w", encoding="utf-8") as f:
-            json.dump(default_configs, f, ensure_ascii=False, indent=2)
-
-def init_aquiles_config_v2(cfg: Union[InitConfigsRedis, InitConfigsQdrant], force: bool = False) -> None:
-    if not isinstance(cfg, (InitConfigsRedis, InitConfigsQdrant)):
-        raise TypeError("An instance of InitConfigsRedis or InitConfigsQdrant must be passed")
+def init_aquiles_config_v2(cfg: Union[InitConfigsRedis, InitConfigsQdrant, InitConfigsPostgreSQL], force: bool = False) -> None:
+    if not isinstance(cfg, (InitConfigsRedis, InitConfigsQdrant, InitConfigsPostgreSQL)):
+        raise TypeError("An instance of InitConfigsRedis, InitConfigsQdrant or InitConfigsPostgreSQL must be passed")
 
     try:
         conf = cfg.dict()
@@ -77,14 +86,6 @@ def init_aquiles_config_v2(cfg: Union[InitConfigsRedis, InitConfigsQdrant], forc
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(conf, f, ensure_ascii=False, indent=2)
 
-#def load_aquiles_config():
-#    if os.path.exists(AQUILES_CONFIG):
-#        try:
-#            with open(AQUILES_CONFIG, "r") as f:
-#                return json.load(f)
-#        except:
-#            return {}
-#    return {}
 
 async def load_aquiles_config() -> Dict[str, Any]:
     async with _load_lock:  
@@ -101,9 +102,9 @@ async def load_aquiles_config() -> Dict[str, Any]:
         except json.JSONDecodeError:
             return {}
 
-async def save_aquiles_configs(configs: Union[dict, InitConfigsRedis, InitConfigsQdrant, BaseModel]) -> None:
+async def save_aquiles_configs(configs: Union[dict, InitConfigsRedis, InitConfigsQdrant, InitConfigsPostgreSQL, BaseModel]) -> None:
     async with _load_lock:
-        if isinstance(configs, (InitConfigsRedis, InitConfigsQdrant, BaseModel)):
+        if isinstance(configs, (InitConfigsRedis, InitConfigsQdrant, InitConfigsPostgreSQL, BaseModel)):
             try:
                 conf = configs.dict()
             except Exception:

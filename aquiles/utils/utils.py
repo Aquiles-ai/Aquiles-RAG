@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.table import Table
 from rich.rule import Rule
-from aquiles.configs import InitConfigsQdrant, InitConfigsRedis, AllowedUser, init_aquiles_config_v2, AQUILES_CONFIG
+from aquiles.configs import InitConfigsQdrant, InitConfigsRedis, InitConfigsPostgreSQL, AllowedUser, init_aquiles_config_v2, AQUILES_CONFIG
 from getpass import getpass
 from pathlib import Path
 
@@ -144,7 +144,7 @@ def _display_summary(cfg) -> None:
 
 def create_config_cli(checkout: bool = True) -> None:
     """
-    Interactive Rich CLI to create an Aquiles configuration for Redis or Qdrant.
+    Interactive Rich CLI to create an Aquiles configuration for Redis, Qdrant or PostgreSQL.
 
     - If checkout=True and AQUILES_CONFIG exists -> do nothing.
     - If checkout=False -> always prompt and save (overwrites).
@@ -168,10 +168,14 @@ def create_config_cli(checkout: bool = True) -> None:
     console.print(Panel(":gorilla:  Welcome to [bold magenta]Aquiles-RAG[/bold magenta]!\n\n"
                         "I'll ask a few questions to create your configuration file.", title="Hello", subtitle="Let's get started"))
 
-    choice = Prompt.ask("Which database would you like to configure?  (1) Redis  (2) Qdrant", choices=["1","2"], default="1")
+    choice = Prompt.ask(
+        "Which database would you like to configure?  (1) Redis  (2) Qdrant  (3) PostgreSQL",
+        choices=["1", "2", "3"],
+        default="1",
+    )
 
     if choice == "1":
-        console.print(":red_circle:  [bold red]Redis selected[/bold red]\n")
+        console.print(":fire: [bold red]Redis selected[/bold red]\n")
         local = Confirm.ask("Is Redis running locally?", default=True)
         host = Prompt.ask("Redis host", default="localhost")
         port = int(Prompt.ask("Redis port", default="6379"))
@@ -210,8 +214,8 @@ def create_config_cli(checkout: bool = True) -> None:
             initial_cap=400
         )
 
-    else:
-        console.print(":large_blue_circle:  [bold cyan]Qdrant selected[/bold cyan]\n")
+    elif choice == "2":
+        console.print(":satellite: [bold cyan]Qdrant selected[/bold cyan]\n")
         local = Confirm.ask("Is Qdrant running locally?", default=True)
         host = Prompt.ask("Qdrant host", default="localhost")
         port = int(Prompt.ask("Qdrant port", default="6333"))
@@ -237,6 +241,43 @@ def create_config_cli(checkout: bool = True) -> None:
             grpc_port=grpc_port,
             api_key=api_key,
             auth_token_provider=auth_token_provider,
+            allows_api_keys=allows_api_keys,
+            allows_users=allows_users or [AllowedUser(username="root", password="root")],
+        )
+
+    else:
+        console.print(":elephant:  [bold green]PostgreSQL selected[/bold green]\n")
+        local = Confirm.ask("Is PostgreSQL running locally?", default=True)
+        host = Prompt.ask("PostgreSQL host", default="localhost")
+        port = int(Prompt.ask("PostgreSQL port", default="5432"))
+        user = Prompt.ask("PostgreSQL user (leave empty to use peer/ident)", default="")
+        password = getpass("PostgreSQL password (leave empty if none): ")
+        database = Prompt.ask("Database name", default="postgres")
+        min_size = int(Prompt.ask("Connection pool min_size", default="1"))
+        max_size = int(Prompt.ask("Connection pool max_size", default="10"))
+        max_queries = int(Prompt.ask("Connection pool max_queries", default="50000"))
+        timeout = float(Prompt.ask("Connection timeout (seconds)", default="60"))
+        allows_api_keys = _parse_comma_list(Prompt.ask("Allowed API keys (comma separated)", default=""))
+
+        add_admin = Confirm.ask("Create an admin user (username/password)?", default=True)
+        if add_admin:
+            admin_user = Prompt.ask("Admin username", default="root")
+            admin_pass = getpass("Admin password: ")
+            allows_users = [AllowedUser(username=admin_user, password=admin_pass)]
+        else:
+            allows_users = []
+
+        cfg = InitConfigsPostgreSQL(
+            type_c="PostgreSQL",
+            host=host,
+            port=port,
+            user=user or None,
+            password=password or None,
+            database=database or None,
+            min_size=min_size,
+            max_size=max_size,
+            max_queries=max_queries,
+            timeout=timeout,
             allows_api_keys=allows_api_keys,
             allows_users=allows_users or [AllowedUser(username="root", password="root")],
         )
