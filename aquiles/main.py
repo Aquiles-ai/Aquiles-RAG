@@ -362,6 +362,25 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
                     "indices": indices
                     }
 
+        elif type_co == "PostgreSQL":
+            clientPg = PostgreSQLRAG(r)
+
+            indices = await clientPg.get_ind()
+
+            dict_ = {"local": conf["local"],
+                    "host": conf["host"],
+                    "port": conf["port"],
+                    "user": conf["user"],
+                    "password": conf["password"],
+                    "min_size": conf["min_size"],
+                    "max_size": conf["max_size"],
+                    "max_queries": conf["max_queries"],
+                    "timeout": conf["timeout"],
+                    "allows_api_keys": conf["allows_api_keys"],
+                    "allows_users": conf["allows_users"],
+                    "indices": indices
+                    }
+
             
         return dict_
 
@@ -473,6 +492,14 @@ async def readiness(request: Request):
             await clientQdr.ready()
         except:
             raise HTTPException(503, "Qdrant unavailable")
+
+    elif type_co == "PostgreSQL":
+        try:
+            clientPg = PostgreSQLRAG(r)
+
+            await clientPg.ready()
+        except:
+            raise HTTPException(503, "PostgreSQL unavailable")
 
     return {"status": "ready"}
 

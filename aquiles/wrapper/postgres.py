@@ -182,39 +182,55 @@ class PostgreSQLRAG(BaseWrapper):
         t = _validate_ident(table_unquoted)
 
         model_val = getattr(q, "embedding_model", None)
-        where_clause = ""
-        params = []
+        ef_runtime = getattr(q, "ef_runtime", None)
+        top_k = int(getattr(q, "top_k", 5))
+
+        vec_literal = _serialize_vector(emb_vector)  # like "[0.1,0.2,...]"
 
         if model_val:
             model_val = str(model_val).strip()
             if model_val:
-                where_clause = "WHERE embedding_model = $2"
-                params.append(model_val)
-
-        ef_runtime = getattr(q, "ef_runtime", None)
-        top_k = int(getattr(q, "top_k", 5))
-
-        vec_literal = _serialize_vector(emb_vector)
-
-
-        query_sql = f"""
-        SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata,
-               (embedding <=> $1::vector) AS distance
-        FROM public.{t}
-        {where_clause}
-        ORDER BY embedding <=> $1::vector
-        LIMIT $3;
-        """
+                where_clause = "WHERE embedding_model = $2::text"
+                # $1 -> vector, $2 -> model_val, $3 -> top_k
+                query_sql = f"""
+                SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata,
+                       (embedding <=> $1::vector) AS distance
+                FROM public.{t}
+                {where_clause}
+                ORDER BY embedding <=> $1::vector
+                LIMIT $3;
+                """
+                params = [vec_literal, model_val, top_k]
+            else:
+                # si model_val vacío, comportarse como sin where
+                where_clause = ""
+                query_sql = f"""
+                SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata,
+                       (embedding <=> $1::vector) AS distance
+                FROM public.{t}
+                {where_clause}
+                ORDER BY embedding <=> $1::vector
+                LIMIT $2;
+                """
+                params = [vec_literal, top_k]
+        else:
+            where_clause = ""
+            query_sql = f"""
+            SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata, embedding_model,
+                   (embedding <=> $1::vector) AS distance
+            FROM public.{t}
+            {where_clause}
+            ORDER BY embedding <=> $1::vector
+            LIMIT $2;
+            """
+            params = [vec_literal, top_k]
 
         async with self.client.acquire() as conn:
             try:
                 if ef_runtime is not None:
                     await conn.execute(f"SET hnsw.ef_search = {int(ef_runtime)};")
 
-                if where_clause:
-                    rows = await conn.fetch(query_sql, vec_literal, params[0], top_k)
-                else:
-                    rows = await conn.fetch(query_sql, vec_literal, top_k)
+                rows = await conn.fetch(query_sql, *params)
 
                 results = []
                 for r in rows:
@@ -234,7 +250,7 @@ class PostgreSQLRAG(BaseWrapper):
                         "embedding_model": r['embedding_model'],
                     })
 
-
+                # filtro por threshold si aplica
                 if getattr(q, "cosine_distance_threshold", None) is not None:
                     try:
                         dist_thr = float(q.cosine_distance_threshold)
@@ -250,11 +266,10 @@ class PostgreSQLRAG(BaseWrapper):
                     except Exception:
                         pass
 
-                results = results[: top_k]
-                return results
+                return results[: top_k]
 
             except Exception as e:
-                print(f"Error {e}")
+                logging.exception("Search error")
                 raise HTTPException(500, detail=f"Search error: {e}")
 
     async def drop_index(self, q: DropIndex):
@@ -277,7 +292,15 @@ class PostgreSQLRAG(BaseWrapper):
                 raise HTTPException(500, detail=str(e))
         
     async def get_ind(self):
-        return await super().get_ind()
+        async with self.client.acquire() as conn:
+            try:
+                rows = await conn.fetch(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'chunks__%';"
+                )
+                indices = [r['tablename'].replace("chunks__", "", 1) for r in rows]
+                return indices
+            except Exception as e:
+                return []
 
     async def ready(self):
         async with self.client.acquire() as conn:

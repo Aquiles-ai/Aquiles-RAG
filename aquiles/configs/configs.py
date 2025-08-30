@@ -53,6 +53,7 @@ class InitConfigsQdrant(BaseModel):
 
 class InitConfigsPostgreSQL(BaseModel):
     type_c: str = "PostgreSQL"
+    local: bool = Field(True, description="PostgreSQL standalone local")
     host: str = Field("localhost", description="PostgreSQL Host")
     port: int = Field(5432, description="PostgreSQL Port")
     user: str | None = Field(default=None, description="")
