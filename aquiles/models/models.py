@@ -125,3 +125,6 @@ class EditsConfigsPostgreSQL(BaseModel):
     timeout: float | None = Field(default=None, description="")
     allows_api_keys: List[str] | None = Field(default=None)
     allows_users: List[AllowedUser] | None = Field(default=None)
+
+
+allow_metadata = {"author", "language", "topics", "source", "created_at", "extra"}

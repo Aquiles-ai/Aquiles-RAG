@@ -1,1 +1,1 @@
-from .models import QueryRAG, SendRAG, CreateIndex, EditsConfigsReds, DropIndex, EditsConfigsQdrant, CreateIndexMultimodal, SendRAGMultimodal, EditsConfigsPostgreSQL
+from .models import QueryRAG, SendRAG, CreateIndex, EditsConfigsReds, DropIndex, EditsConfigsQdrant, CreateIndexMultimodal, SendRAGMultimodal, EditsConfigsPostgreSQL, allow_metadata

@@ -5,7 +5,7 @@ from qdrant_client.models import (
     PayloadSchemaType,
     Filter, FieldCondition, MatchValue
 )
-from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
+from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex, allow_metadata
 import asyncio
 from qdrant_client import AsyncQdrantClient
 from aquiles.wrapper.basewrapper import BaseWrapper
@@ -48,6 +48,18 @@ class QdrantWr(BaseWrapper):
             await self.client.create_payload_index(c.indexname, "chunk_size", field_schema=PayloadSchemaType.INTEGER)
 
             await self.client.create_payload_index(c.indexname, "embedding_model", field_schema=PayloadSchemaType.KEYWORD)
+
+            await self.client.create_payload_index(c.indexname, "author", field_schema=PayloadSchemaType.KEYWORD)
+
+            await self.client.create_payload_index(c.indexname, "language", field_schema=PayloadSchemaType.KEYWORD)
+
+            await self.client.create_payload_index(c.indexname, "topics", field_schema=PayloadSchemaType.KEYWORD)
+
+            await self.client.create_payload_index(c.indexname, "source", field_schema=PayloadSchemaType.KEYWORD)
+
+            await self.client.create_payload_index(c.indexname, "created_at", field_schema=PayloadSchemaType.KEYWORD)
+
+            await self.client.create_payload_index(c.indexname, "extra", field_schema=PayloadSchemaType.KEYWORD)
         except Exception as e:
                 print(f"Error 2 {e}")
 
@@ -75,6 +87,10 @@ class QdrantWr(BaseWrapper):
             "embedding_model": embedding_model_val,
         }
 
+        if q.metadata:
+            for key, value in q.metadata.items():
+                if key in allow_metadata:
+                    payload[key] = value
 
         vector = getattr(q, "embeddings", None)
         if vector is None:

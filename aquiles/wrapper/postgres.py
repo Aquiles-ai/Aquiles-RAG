@@ -50,7 +50,7 @@ class PostgreSQLRAG(BaseWrapper):
             raw_text_tsv tsvector,
             embedding vector({int(q.embeddings_dim)}) NOT NULL,
             embedding_model text,
-            metadata jsonb,
+            metadata jsonb, -- I think I can save the metadata here like in Qdrant and Redis
             created_at timestamptz DEFAULT now()
         );
 

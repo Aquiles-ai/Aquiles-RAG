@@ -10,7 +10,7 @@ import redis.asyncio as redisA
 from redis.asyncio.cluster import RedisCluster
 from typing import Union
 from aquiles.wrapper.basewrapper import BaseWrapper
-from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
+from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex, allow_metadata
 
 class RdsWr(BaseWrapper):
     def __init__(self, client: Union[redisA.Redis, RedisCluster]):
@@ -61,6 +61,11 @@ class RdsWr(BaseWrapper):
             "embedding":    emb_bytes,
         }
 
+        if q.metadata:
+            for key, value in q.metadata.items():
+                if key in allow_metadata:
+                    mapping[key] = value
+
         val = q.embedding_model
         try:
             val = None if val is None else str(val).strip()
@@ -80,6 +85,8 @@ class RdsWr(BaseWrapper):
         return key
 
     async def query(self, q: QueryRAG, emb_vector):
+        # For now I'm not going to touch the query methods for the metadata until I'm clear on how I'm going to save everything
+
         model_val = getattr(q, "embedding_model", None)
         if model_val:
             model_val = str(model_val).strip()
