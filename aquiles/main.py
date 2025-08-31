@@ -12,7 +12,7 @@ from aquiles.configs import load_aquiles_config, save_aquiles_configs
 from aquiles.connection import get_connectionAll
 from aquiles.schemas import RedsSch
 from aquiles.wrapper import RdsWr, QdrantWr, PostgreSQLRAG
-from aquiles.models import QueryRAG, SendRAG, CreateIndex, DropIndex, EditsConfigsReds, EditsConfigsQdrant
+from aquiles.models import QueryRAG, SendRAG, CreateIndex, DropIndex, EditsConfigsReds, EditsConfigsQdrant, EditsConfigsPostgreSQL
 from aquiles.utils import verify_api_key
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_401_UNAUTHORIZED
@@ -388,7 +388,7 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
         return RedirectResponse(url="/login/ui", status_code=302)
 
 @app.post("/ui/configs")
-async def ui_configs(update: Union[EditsConfigsReds, EditsConfigsQdrant], user: str = Depends(get_current_user)):
+async def ui_configs(update: Union[EditsConfigsReds, EditsConfigsQdrant, EditsConfigsPostgreSQL], user: str = Depends(get_current_user)):
     try:
         configs = app.state.aquiles_config
 

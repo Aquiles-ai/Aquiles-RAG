@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, PositiveInt
-from typing import List, Literal, Optional, Any
+from typing import List, Literal, Optional, Any, Dict
 from aquiles.configs import AllowedUser
 
 class SendRAG(BaseModel):
@@ -15,6 +15,7 @@ class SendRAG(BaseModel):
     raw_text: str = Field(..., description="Full original text of the chunk")
     embeddings: List[float] = Field(..., description="Vector of embeddings associated with the chunk")
     embedding_model: str | None = Field(default=None, description="Optional metadata field for the embeddings model")
+    metadata: Dict[str, Any] | None = Field(default=None, description="Optional metadata (key-value)")
 
 class QueryRAG(BaseModel):
     index: str = Field(..., description="Name of the index in which the query will be made")
@@ -30,6 +31,7 @@ class QueryRAG(BaseModel):
         description="Max cosine distance (0–2) to accept; if omitted, no threshold"
     )
     embedding_model: str | None = Field(default=None, description="Optional metadata field for the embeddings model")
+    metadata: Dict[str, Any] | None = Field(default=None, description="Optional metadata (key-value)")
 
 class CreateIndex(BaseModel):
     indexname: str = Field(..., description="Name of the index to create")
@@ -109,3 +111,17 @@ class EditsConfigsQdrant(BaseModel):
 class DropIndex(BaseModel):
     index_name: str = Field(..., description="The name of the index to delete")
     delete_docs: bool = Field(False, description="Removes all documents from the index if true")
+
+class EditsConfigsPostgreSQL(BaseModel):
+    local: bool | None= Field(default=None, description="PostgreSQL standalone local")
+    host: str | None = Field(default=None, description="PostgreSQL Host")
+    port: int | None = Field(default=None, description="PostgreSQL Port")
+    user: str | None = Field(default=None, description="")
+    password: str | None = Field(default=None, description="")
+    database: str | None = Field(default=None, description="")
+    min_size: int | None = Field(default=None, description="")
+    max_size: int | None = Field(default=None, description="")
+    max_queries: int | None = Field(default=None, description="")
+    timeout: float | None = Field(default=None, description="")
+    allows_api_keys: List[str] | None = Field(default=None)
+    allows_users: List[AllowedUser] | None = Field(default=None)

@@ -21,7 +21,13 @@ async def RedsSch(q: CreateIndex):
                 "EF_RUNTIME": 100,
             }
         ),
-        TagField("embedding_model", separator="|")
+        TagField("embedding_model", separator="|"),
+        TagField("author", separator="|"),
+        TagField("language", separator="|"),
+        TagField("topics", separator="|"),
+        TagField("source", separator="|"),
+        TagField("created_at", separator="|"),
+        TagField("extra", separator="|")
     )
 
     return schema
