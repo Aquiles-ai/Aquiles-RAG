@@ -1,15 +1,16 @@
 import asyncio
-from typing import Optional, List
+from typing import Optional, List, Union
 
 class Reranker:
-    def __init__(self, model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2",
-                 providers: Optional[List[str]] = None,
+    def __init__(self,
+                 model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2",
+                 providers: Optional[Union[str, List[str]]] = None,
                  max_concurrent: int = 2):
-        """
-        providers: None (default) o e.g. ["CUDAExecutionProvider"] si usas fastembed-gpu
-        """
         self.model_name = model_name
-        self.providers = providers
+        if isinstance(providers, str):
+            self.providers = [providers]
+        else:
+            self.providers = providers
         self.max_concurrent = max_concurrent
 
         self._encoder = None
@@ -29,6 +30,7 @@ class Reranker:
                 self._encoder = TextCrossEncoder(model_name=self.model_name)
         else:
             self._encoder = TextCrossEncoder(model_name=self.model_name)
+
         self._sem = asyncio.Semaphore(self.max_concurrent)
 
     async def load_async(self):
@@ -45,3 +47,22 @@ class Reranker:
 
     async def ensure_loaded(self):
         await self.load_async()
+
+    async def score_pairs(self, pairs: List[tuple]) -> List[float]:
+        if not self.is_loaded():
+            raise RuntimeError("Reranker not loaded. Call ensure_loaded() first or schedule preload.")
+
+        assert self._sem is not None
+        async with self._sem:
+            loop = asyncio.get_running_loop()
+            def blocking_rerank():
+                try:
+                    return list(self._encoder.rerank_pairs(pairs))
+                except AttributeError:
+                    out = []
+                    for q, d in pairs:
+                        out.extend(list(self._encoder.rerank(q, [d])))
+                    return out
+
+            raw_scores = await loop.run_in_executor(None, blocking_rerank)
+            return [float(s) for s in raw_scores]

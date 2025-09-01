@@ -15,6 +15,7 @@ from aquiles.wrapper import RdsWr, QdrantWr, PostgreSQLRAG
 from aquiles.models import QueryRAG, SendRAG, CreateIndex, DropIndex, EditsConfigsReds, EditsConfigsQdrant, EditsConfigsPostgreSQL
 from aquiles.utils import verify_api_key
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
+from aquiles.rerank import api
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_401_UNAUTHORIZED
 import os
 import pathlib
@@ -31,6 +32,27 @@ async def lifespan(app: FastAPI):
     app.state.aquiles_config = await load_aquiles_config()
 
     type_co = app.state.aquiles_config.get("type_co", app.state.aquiles_config.get("type_c", "Redis"))
+
+    try:
+        configs = app.state.aquiles_config
+        if configs.get("rerank", False):
+            from aquiles.rerank import Reranker as RerankerClass
+            import asyncio  
+            provider = configs.get("provider_re", None)
+            model = configs.get("reranker_model", "Xenova/ms-marco-MiniLM-L-6-v2")
+            max_re = configs.get("max_concurrent_request", 2)
+            providers = provider if isinstance(provider, list) else ([provider] if provider else None)
+            app.state.reranker = RerankerClass(model_name=model, providers=providers, max_concurrent=max_re)
+
+            if configs.get("reranker_preload", False):
+                asyncio.create_task(app.state.reranker.load_async())
+                print("Reranker preload scheduled (background).")
+        else:
+            app.state.reranker = None
+            print("Reranker disabled by config.")
+    except Exception as e:
+        print("Warning: failed to prepare reranker singleton:", e)
+        app.state.reranker = None
     
     try:
         yield
@@ -74,6 +96,7 @@ templates_dir = os.path.join(package_dir, "templates")
 templates = Jinja2Templates(directory=templates_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+app.include_router(api.router)
 
 @app.post("/create/index", dependencies=[Depends(verify_api_key)])
 async def create_index(q: CreateIndex, request: Request):
