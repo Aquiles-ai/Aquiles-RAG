@@ -12,6 +12,45 @@ from typing import Union
 from aquiles.wrapper.basewrapper import BaseWrapper
 from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex, allow_metadata
 
+def _format_tag_value(value):
+    if value is None:
+        return "__unknown__"
+    if isinstance(value, (list, tuple, set)):
+        vals = [str(v).strip() for v in value if v is not None and str(v).strip() != ""]
+        if not vals:
+            return "__unknown__"
+        escaped = [_escape_tag(v) for v in vals]
+        return "|".join(escaped)
+    s = str(value).strip()
+    return _escape_tag(s) if s != "" else "__unknown__"
+
+def _build_metadata_filter(metadata: dict) -> str:
+    if not metadata:
+        return ""
+    parts = []
+    for key, val in metadata.items():
+        if key not in allow_metadata:
+            continue
+        if val is None:
+            parts.append(f"(@{key}:{{__unknown__}})")
+            continue
+
+        if isinstance(val, dict) and ("min" in val or "max" in val):
+            minv = val.get("min", "-inf")
+            maxv = val.get("max", "+inf")
+            parts.append(f"(@{key}:[{minv} {maxv}])")
+            continue
+
+        if isinstance(val, (list, tuple, set)):
+            joined = _format_tag_value(val) 
+            parts.append(f"(@{key}:{{{joined}}})")
+        else:
+            escaped = _format_tag_value(val)
+            parts.append(f"(@{key}:{{{escaped}}})")
+
+    return "".join(parts)
+
+
 class RdsWr(BaseWrapper):
     def __init__(self, client: Union[redisA.Redis, RedisCluster]):
         self.client = client
@@ -62,9 +101,11 @@ class RdsWr(BaseWrapper):
         }
 
         if q.metadata:
-            for key, value in q.metadata.items():
-                if key in allow_metadata:
-                    mapping[key] = value
+            for mkey, mval in q.metadata.items():
+                if mkey in allow_metadata:
+                    mapping[mkey] = _format_tag_value(mval)
+                else:
+                    mapping[mkey] = _format_tag_value(mval)
 
         val = q.embedding_model
         try:
@@ -85,16 +126,21 @@ class RdsWr(BaseWrapper):
         return key
 
     async def query(self, q: QueryRAG, emb_vector):
-        # For now I'm not going to touch the query methods for the metadata until I'm clear on how I'm going to save everything
-
+        filters = []
         model_val = getattr(q, "embedding_model", None)
         if model_val:
             model_val = str(model_val).strip()
-            if model_val:  
+            if model_val:
                 safe_tag = _escape_tag(model_val)
-                filter_prefix = f"(@embedding_model:{{{safe_tag}}})"
-            else:
-                filter_prefix = "(*)"
+                filters.append(f"(@embedding_model:{{{safe_tag}}})")
+
+        if getattr(q, "metadata", None):
+            meta_filter = _build_metadata_filter(q.metadata)
+            if meta_filter:
+                filters.append(meta_filter)
+
+        if filters:
+            filter_prefix = "".join(filters)
         else:
             filter_prefix = "(*)"
 
@@ -104,9 +150,9 @@ class RdsWr(BaseWrapper):
 
         knn_q = (
             Query(query_string)
-            .return_fields("name_chunk", "chunk_id", "chunk_size", "raw_text", "score", "embedding_model")
+            .return_fields("name_chunk", "chunk_id", "chunk_size", "raw_text", "score", "embedding_model", *list(allow_metadata))
             .dialect(2)
-        )   
+        )
 
         try:
             res = await self.client.ft(q.index).search(knn_q, {"vec": emb_vector})
@@ -140,6 +186,7 @@ class RdsWr(BaseWrapper):
                 "raw_text":   getattr(doc, "raw_text", None),
                 "score":      float(getattr(doc, "score", 0.0)),
                 "embedding_model": embedding_model_val,
+                **{k: getattr(doc, k, None) for k in allow_metadata}
             })
 
         return results

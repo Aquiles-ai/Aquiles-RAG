@@ -3,12 +3,92 @@ from qdrant_client.models import (
     VectorParams, Distance,
     HnswConfigDiff, PointStruct,
     PayloadSchemaType,
-    Filter, FieldCondition, MatchValue
+    Filter, FieldCondition, MatchValue, MatchAny, DatetimeRange, Range
 )
 from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex, allow_metadata
 import asyncio
 from qdrant_client import AsyncQdrantClient
 from aquiles.wrapper.basewrapper import BaseWrapper
+from datetime import datetime
+from datetime import timezone
+
+def _to_datetime_if_needed(val):
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        try:
+            return datetime.fromtimestamp(int(val), tz=timezone.utc)
+        except Exception:
+            return None
+    if isinstance(val, str):
+        try:
+            dt = datetime.fromisoformat(val)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            return None
+    return None
+
+def _build_qdrant_filter(metadata: dict | None, embedding_model: str | None, allow_metadata: set):
+    if not metadata and not embedding_model:
+        return None
+
+    must_conditions = []
+
+    if embedding_model:
+        em = str(embedding_model).strip()
+        if em:
+            must_conditions.append(FieldCondition(key="embedding_model", match=MatchValue(value=em)))
+
+    if not metadata:
+        return Filter(must=must_conditions) if must_conditions else None
+
+    for key, value in metadata.items():
+        if key not in allow_metadata:
+            continue
+        if value is None:
+            continue
+
+        if isinstance(value, (list, tuple, set)):
+            vals = [v for v in value if v is not None]
+            if not vals:
+                continue
+            must_conditions.append(FieldCondition(key=key, match=MatchAny(any=list(vals))))
+            continue
+
+        if isinstance(value, dict):
+            if key == "created_at":
+                gte = value.get("min") or value.get("gte")
+                lte = value.get("max") or value.get("lte")
+                dt_gte = _to_datetime_if_needed(gte)
+                dt_lte = _to_datetime_if_needed(lte)
+                if dt_gte or dt_lte:
+                    must_conditions.append(FieldCondition(
+                        key=key,
+                        range=DatetimeRange(gte=dt_gte, lte=dt_lte)
+                    ))
+                    continue
+            gte = value.get("min") or value.get("gte")
+            lte = value.get("max") or value.get("lte")
+            gt = value.get("gt")
+            lt = value.get("lt")
+            if any(v is not None for v in (gte, lte, gt, lt)):
+                try:
+                    rng = Range(
+                        gte=(float(gte) if gte is not None else None),
+                        lte=(float(lte) if lte is not None else None),
+                        gt=(float(gt) if gt is not None else None),
+                        lt=(float(lt) if lt is not None else None),
+                    )
+                    must_conditions.append(FieldCondition(key=key, range=rng))
+                    continue
+                except Exception:
+                    pass
+
+        must_conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
+
+    return Filter(must=must_conditions) if must_conditions else None
 
 
 class QdrantWr(BaseWrapper):
@@ -57,7 +137,7 @@ class QdrantWr(BaseWrapper):
 
             await self.client.create_payload_index(c.indexname, "source", field_schema=PayloadSchemaType.KEYWORD)
 
-            await self.client.create_payload_index(c.indexname, "created_at", field_schema=PayloadSchemaType.KEYWORD)
+            await self.client.create_payload_index(c.indexname, "created_at", field_schema=PayloadSchemaType.DATETIME)
 
             await self.client.create_payload_index(c.indexname, "extra", field_schema=PayloadSchemaType.KEYWORD)
         except Exception as e:
@@ -89,8 +169,10 @@ class QdrantWr(BaseWrapper):
 
         if q.metadata:
             for key, value in q.metadata.items():
-                if key in allow_metadata:
+                if key in allow_metadata and value:
                     payload[key] = value
+                else:
+                    payload[key] = "__unknown__"
 
         vector = getattr(q, "embeddings", None)
         if vector is None:
@@ -108,13 +190,7 @@ class QdrantWr(BaseWrapper):
     async def query(self, q: QueryRAG, emb_vector):
 
         model_val = getattr(q, "embedding_model", None)
-        query_filter = None
-        if model_val:
-            model_val = str(model_val).strip()
-            if model_val:
-                query_filter = Filter(
-                    must=[ FieldCondition(key="embedding_model", match=MatchValue(value=model_val)) ]
-                )
+        query_filter = _build_qdrant_filter(getattr(q, "metadata", None), model_val, allow_metadata)
 
         score_threshold = None
         if getattr(q, "cosine_distance_threshold", None) is not None:

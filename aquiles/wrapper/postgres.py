@@ -1,11 +1,14 @@
 import asyncpg
-from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
+from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex, allow_metadata
 from aquiles.wrapper.basewrapper import BaseWrapper
+from typing import Any
 from fastapi import HTTPException
 import re
 import json
 from uuid import uuid4
 import logging
+from datetime import datetime
+from datetime import timezone
 
 Pool = asyncpg.Pool
 IDENT_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
@@ -23,6 +26,35 @@ def _table_name_for_index(indexname: str) -> str:
 def _serialize_vector(vec) -> str:
     # pgvector accepts literal of form '[0.1,0.2,...]'::vector
     return "[" + ",".join(map(str, vec)) + "]"
+
+def _parse_to_datetime(val) -> datetime | None:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        dt = val
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+    if isinstance(val, (int, float)):
+        try:
+            return datetime.fromtimestamp(int(val), tz=timezone.utc)
+        except Exception:
+            return None
+    if isinstance(val, str):
+        try:
+            s = val
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            dt = datetime.fromisoformat(s)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            try:
+                return datetime.fromtimestamp(int(val), tz=timezone.utc)
+            except Exception:
+                return None
+    return None
 
 class PostgreSQLRAG(BaseWrapper):
     def __init__(self, client: Pool):
@@ -148,17 +180,32 @@ class PostgreSQLRAG(BaseWrapper):
 
         vec_literal = _serialize_vector(vector)  # like "[0.1,0.2,...]"
 
+        metadata_val = getattr(q, "metadata", None)
+        created_at_val = None
+        if isinstance(metadata_val, dict):
+            md = dict(metadata_val)
+            if "created_at" in md:
+                dt = _parse_to_datetime(md.get("created_at"))
+                if dt:
+                    created_at_val = dt
+                md.pop("created_at", None)
+            try:
+                metadata_json = json.dumps(md)
+            except Exception:
+                metadata_json = None
+        else:
+            metadata_json = None
+
+
         insert_sql = f"""
-        INSERT INTO public.{t} (id, resource_id, name_chunk, chunk_id, chunk_size, raw_text, embedding, embedding_model, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::vector, $8, $9)
+        INSERT INTO public.{t}
+            (id, resource_id, name_chunk, chunk_id, chunk_size, raw_text, embedding, embedding_model, metadata{', created_at' if True else ''})
+        VALUES ($1, $2, $3, $4, $5, $6, $7::vector, $8, $9{', $10' if True else None})
         RETURNING id;
         """
 
         async with self.client.acquire() as conn:
             try:
-                metadata_val = getattr(q, "metadata", None)
-                if isinstance(metadata_val, dict):
-                    metadata_val = json.dumps(metadata_val)
                 row = await conn.fetchrow(
                     insert_sql,
                     str(chosen_id),
@@ -167,9 +214,10 @@ class PostgreSQLRAG(BaseWrapper):
                     str(getattr(q, "chunk_id", chosen_id)),
                     getattr(q, "chunk_size", None),
                     getattr(q, "raw_text", None),
-                    vec_literal,  # passed as text, casted to vector by $7::vector
+                    vec_literal,
                     embedding_model_val,
-                    metadata_val
+                    metadata_json,
+                    created_at_val
                 )
                 return str(row['id'])
             except Exception as e:
@@ -187,43 +235,116 @@ class PostgreSQLRAG(BaseWrapper):
 
         vec_literal = _serialize_vector(emb_vector)  # like "[0.1,0.2,...]"
 
+        params: list[Any] = [vec_literal]
+        next_idx = 2
+
+        where_clauses: list[str] = []
         if model_val:
             model_val = str(model_val).strip()
             if model_val:
-                where_clause = "WHERE embedding_model = $2::text"
-                # $1 -> vector, $2 -> model_val, $3 -> top_k
-                query_sql = f"""
-                SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata,
-                       (embedding <=> $1::vector) AS distance
-                FROM public.{t}
-                {where_clause}
-                ORDER BY embedding <=> $1::vector
-                LIMIT $3;
-                """
-                params = [vec_literal, model_val, top_k]
-            else:
-                # si model_val vacío, comportarse como sin where
-                where_clause = ""
-                query_sql = f"""
-                SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata,
-                       (embedding <=> $1::vector) AS distance
-                FROM public.{t}
-                {where_clause}
-                ORDER BY embedding <=> $1::vector
-                LIMIT $2;
-                """
-                params = [vec_literal, top_k]
-        else:
-            where_clause = ""
-            query_sql = f"""
-            SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata, embedding_model,
-                   (embedding <=> $1::vector) AS distance
-            FROM public.{t}
-            {where_clause}
-            ORDER BY embedding <=> $1::vector
-            LIMIT $2;
-            """
-            params = [vec_literal, top_k]
+                where_clauses.append(f"embedding_model = ${next_idx}::text")
+                params.append(model_val)
+                next_idx += 1
+
+        metadata_in = getattr(q, "metadata", None)
+        if isinstance(metadata_in, dict):
+            for key, val in metadata_in.items():
+                # solo permitimos keys en allow_metadata
+                if key not in allow_metadata:
+                    continue
+                if val is None:
+                    # SKIP None => no filtrar por esta key (comportamiento "None = ignorar")
+                    continue
+
+                # created_at: preferimos filtrar por la columna created_at si existe
+                if key == "created_at":
+                    # support dict with min/max or scalar
+                    if isinstance(val, dict):
+                        # admite min/max/gte/lte
+                        minv = val.get("min") or val.get("gte")
+                        maxv = val.get("max") or val.get("lte")
+                        if minv is not None:
+                            dt_min = _parse_to_datetime(minv)
+                            if dt_min:
+                                where_clauses.append(f"created_at >= ${next_idx}::timestamptz")
+                                params.append(dt_min)
+                                next_idx += 1
+                        if maxv is not None:
+                            dt_max = _parse_to_datetime(maxv)
+                            if dt_max:
+                                where_clauses.append(f"created_at <= ${next_idx}::timestamptz")
+                                params.append(dt_max)
+                                next_idx += 1
+                    else:
+                        # single value -> equality (or date >= value)
+                        dt = _parse_to_datetime(val)
+                        if dt:
+                            where_clauses.append(f"created_at >= ${next_idx}::timestamptz")
+                            params.append(dt)
+                            next_idx += 1
+                    continue
+
+                # si es lista/tuple -> buscamos ANY dentro del array JSONB (OR dentro del campo)
+                if isinstance(val, (list, tuple, set)):
+                    arr = [str(x) for x in val if x is not None]
+                    if not arr:
+                        continue
+                # usamos jsonb_array_elements_text para comprobar si algún elemento coincide
+                # evitamos interpolation de key usando el nombre literal (key está validado en allow_metadata)
+                # generamos una subquery EXISTS con un parámetro (text[])
+                    where_clauses.append(
+                        f"EXISTS (SELECT 1 FROM jsonb_array_elements_text(metadata->'{key}') elem WHERE elem = ANY(${next_idx}::text[]))"
+                    )
+                    params.append(arr)
+                    next_idx += 1
+                    continue
+
+                # si es dict para otros campos (por ejemplo numeric ranges) - intentamos rango
+                if isinstance(val, dict):
+                    # try numeric range keys min/max/gte/lte/gt/lt
+                    minv = val.get("min") or val.get("gte")
+                    maxv = val.get("max") or val.get("lte")
+                    gt = val.get("gt")
+                    lt = val.get("lt")
+                    if any(v is not None for v in (minv, maxv, gt, lt)):
+                        # extraemos numeric values y usamos (metadata->>key)::numeric
+                        if minv is not None:
+                            where_clauses.append(f"(metadata->>'{key}')::numeric >= ${next_idx}::numeric")
+                            params.append(float(minv))
+                            next_idx += 1
+                        if maxv is not None:
+                            where_clauses.append(f"(metadata->>'{key}')::numeric <= ${next_idx}::numeric")
+                            params.append(float(maxv))
+                            next_idx += 1
+                        if gt is not None:
+                            where_clauses.append(f"(metadata->>'{key}')::numeric > ${next_idx}::numeric")
+                            params.append(float(gt))
+                            next_idx += 1
+                        if lt is not None:
+                            where_clauses.append(f"(metadata->>'{key}')::numeric < ${next_idx}::numeric")
+                            params.append(float(lt))
+                            next_idx += 1
+                        continue
+                # si no es rango, caerá al fallback equality abajo
+
+            # fallback: equality against metadata->>key (string)
+                where_clauses.append(f"metadata->>'{key}' = ${next_idx}::text")
+                params.append(str(val))
+                next_idx += 1
+
+        # finalmente el LIMIT param
+        params.append(top_k)
+        limit_placeholder = f"${next_idx}"
+        # ahora construimos SQL
+        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+        query_sql = f"""
+        SELECT name_chunk, chunk_id, chunk_size, raw_text, metadata, embedding_model,
+                (embedding <=> $1::vector) AS distance
+        FROM public.{t}
+        {where_sql}
+        ORDER BY embedding <=> $1::vector
+        LIMIT {limit_placeholder};
+        """
 
         async with self.client.acquire() as conn:
             try:
@@ -241,6 +362,8 @@ class PostgreSQLRAG(BaseWrapper):
                     except Exception:
                         similarity = None
 
+                    # metadata devuelta por asyncpg ya es dict (si lo insertaste como jsonb)
+                    meta = r['metadata']
                     results.append({
                         "name_chunk": r['name_chunk'],
                         "chunk_id": str(r['chunk_id']) if r['chunk_id'] is not None else None,
@@ -248,9 +371,9 @@ class PostgreSQLRAG(BaseWrapper):
                         "raw_text": r['raw_text'],
                         "score": similarity,
                         "embedding_model": r['embedding_model'],
+                        "metadata": meta
                     })
 
-                # filtro por threshold si aplica
                 if getattr(q, "cosine_distance_threshold", None) is not None:
                     try:
                         dist_thr = float(q.cosine_distance_threshold)
@@ -259,7 +382,7 @@ class PostgreSQLRAG(BaseWrapper):
                             s = r.get("score")
                             if s is None:
                                 continue
-                            distance_like = 1.0 - s 
+                            distance_like = 1.0 - s
                             if distance_like <= dist_thr:
                                 filtered.append(r)
                         results = filtered

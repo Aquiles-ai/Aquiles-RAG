@@ -98,7 +98,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 app.include_router(api.router)
 
-@app.post("/create/index", dependencies=[Depends(verify_api_key)])
+@app.post("/create/index", dependencies=[Depends(verify_api_key)], tags=["RAG APIs"])
 async def create_index(q: CreateIndex, request: Request):
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
     type_co = conf.get("type_c", "Redis")
@@ -160,7 +160,7 @@ async def create_index(q: CreateIndex, request: Request):
             "status": "success",
             "index": q.indexname}   
 
-@app.post("/rag/create", dependencies=[Depends(verify_api_key)])
+@app.post("/rag/create", dependencies=[Depends(verify_api_key)], tags=["RAG APIs"])
 async def send_rag(q: SendRAG, request: Request):
 
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
@@ -219,7 +219,7 @@ async def send_rag(q: SendRAG, request: Request):
         return {"status": "ok", "key": key}
 
 
-@app.post("/rag/query-rag", dependencies=[Depends(verify_api_key)])
+@app.post("/rag/query-rag", dependencies=[Depends(verify_api_key)], tags=["RAG APIs"])
 async def query_rag(q: QueryRAG, request: Request):
 
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
@@ -262,7 +262,7 @@ async def query_rag(q: QueryRAG, request: Request):
         return {"status": "ok", "total": len(results), "results": results}
 
 
-@app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)])
+@app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)], tags=["RAG APIs"])
 async def drop_index(q: DropIndex, request: Request):
 
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
@@ -307,7 +307,7 @@ async def auth_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
-@app.post("/token")
+@app.post("/token", tags=["HTML Helper"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     if not await authenticate_user(form_data.username, form_data.password):
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED,
@@ -320,8 +320,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
     return response
 
-@app.get("/")
-@app.get("/ui", response_class=HTMLResponse)
+@app.get("/", tags=["HTML"])
+@app.get("/ui", response_class=HTMLResponse, tags=["HTML"])
 async def home(request: Request, user: str = Depends(get_current_user)):
     try:
         conf = getattr(request.app.state, "aquiles_config", {}) or {}
@@ -330,11 +330,11 @@ async def home(request: Request, user: str = Depends(get_current_user)):
     except HTTPException:
         return RedirectResponse(url="/login/ui", status_code=302)
 
-@app.get("/login/ui", response_class=HTMLResponse)
+@app.get("/login/ui", response_class=HTMLResponse, tags=["HTML"])
 async def login_ui(request: Request):
     return templates.TemplateResponse("login_ui.html", {"request": request})
 
-@app.get("/ui/configs")
+@app.get("/ui/configs", tags=["HTML Helper"])
 async def get_configs(request: Request, user: str = Depends(get_current_user)):
     try:
         indices = []
@@ -410,7 +410,7 @@ async def get_configs(request: Request, user: str = Depends(get_current_user)):
     except HTTPException:
         return RedirectResponse(url="/login/ui", status_code=302)
 
-@app.post("/ui/configs")
+@app.post("/ui/configs", tags=["HTML Helper"])
 async def ui_configs(update: Union[EditsConfigsReds, EditsConfigsQdrant, EditsConfigsPostgreSQL], user: str = Depends(get_current_user)):
     try:
         configs = app.state.aquiles_config
@@ -450,7 +450,7 @@ async def protected_redoc_ui(request: Request, user: str = Depends(get_current_u
         title=f"{app.title} – ReDoc",
     )
 
-@app.get("/status/ram")
+@app.get("/status/ram", tags=["HTML Helper"])
 async def get_status_ram(request: Request) -> Dict[str, Any]:
 
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
@@ -487,7 +487,7 @@ async def get_status_ram(request: Request) -> Dict[str, Any]:
         "app_process": app_metrics,
     }
 
-@app.get("/status", response_class=HTMLResponse)
+@app.get("/status", response_class=HTMLResponse, tags=["HTML"])
 async def status(request: Request):
     return templates.TemplateResponse("status.html", {"request": request})
 
