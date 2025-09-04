@@ -236,6 +236,11 @@ class QdrantWr(BaseWrapper):
                 "raw_text":   payload.get("raw_text"),
                 "score":      float(q_score) if q_score is not None else None,
                 "embedding_model": embedding_model_val,
+                "metadata": {"author": payload.get("author"),
+                            "language": payload.get("language"),
+                            "topics": payload.get("topics"),
+                            "created_at": payload.get("created_at"),
+                            "extra": payload.get("extra")}
             })
 
         if getattr(q, "cosine_distance_threshold", None) is not None:

@@ -26,7 +26,7 @@ async def RedsSch(q: CreateIndex):
         TagField("language", separator="|"),
         TagField("topics", separator="|"),
         TagField("source", separator="|"),
-        NumericField("created_at", separator="|"),
+        NumericField("created_at"),
         TagField("extra", separator="|")
     )
 

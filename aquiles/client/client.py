@@ -84,43 +84,20 @@ class AquilesRAG:
             """
 
             url = f'{self.base_url}/rag/query-rag'
-            if embedding_model:
-                body ={
-                    "index" : index,
-                    "embeddings": embedding,
-                    "dtype": dtype,
-                    "top_k": top_k,
-                    "cosine_distance_threshold": cosine_distance_threshold,
-                    "embedding_model": embedding_model
-                }
+            
+            body = {
+                "index" : index,
+                "embeddings": embedding,
+                "dtype": dtype,
+                "top_k": top_k,
+                "cosine_distance_threshold": cosine_distance_threshold
+            }
 
-            elif metadata:
-                body ={
-                    "index" : index,
-                    "embeddings": embedding,
-                    "dtype": dtype,
-                    "top_k": top_k,
-                    "cosine_distance_threshold": cosine_distance_threshold,
-                    "metadata": metadata
-                }
-            elif metadata and embedding_model:
-                body ={
-                    "index" : index,
-                    "embeddings": embedding,
-                    "dtype": dtype,
-                    "top_k": top_k,
-                    "cosine_distance_threshold": cosine_distance_threshold,
-                    "embedding_model": embedding_model,
-                    "metadata": metadata
-                }
-            else:
-                body ={
-                    "index" : index,
-                    "embeddings": embedding,
-                    "dtype": dtype,
-                    "top_k": top_k,
-                    "cosine_distance_threshold": cosine_distance_threshold
-                }
+            if embedding_model is not None:
+                body["embedding_model"] = embedding_model
+            if metadata is not None:
+                body["metadata"] = metadata
+
 
             try:
                 if self.api_key:
@@ -171,47 +148,19 @@ class AquilesRAG:
                 for idx, chunk in enumerate(chunks, start=1):
                     emb = embedding_func(chunk)
 
-                    if embedding_model:
-                        payload = {
+                    payload = {
                             "index": index,
                             "name_chunk": f"{name_chunk}_{idx}",
                             "dtype": dtype,
                             "chunk_size": 1024,
                             "raw_text": chunk,
                             "embeddings": emb,
-                            "embedding_model": embedding_model
                         }
 
-                    elif metadata:
-                        payload = {
-                            "index": index,
-                            "name_chunk": f"{name_chunk}_{idx}",
-                            "dtype": dtype,
-                            "chunk_size": 1024,
-                            "raw_text": chunk,
-                            "embeddings": emb,
-                            "metadata": metadata
-                        }
-                    elif metadata and embedding_model:
-                        payload = {
-                            "index": index,
-                            "name_chunk": f"{name_chunk}_{idx}",
-                            "dtype": dtype,
-                            "chunk_size": 1024,
-                            "raw_text": chunk,
-                            "embeddings": emb,
-                            "embedding_model": embedding_model,
-                            "metadata": metadata
-                        }
-                    else:
-                        payload = {
-                            "index": index,
-                            "name_chunk": f"{name_chunk}_{idx}",
-                            "dtype": dtype,
-                            "chunk_size": 1024,
-                            "raw_text": chunk,
-                            "embeddings": emb,
-                        }
+                    if embedding_model is not None:
+                        payload["embedding_model"] = embedding_model
+                    if metadata is not None:
+                        payload["metadata"] = metadata
 
                     try:
                         if self.api_key:

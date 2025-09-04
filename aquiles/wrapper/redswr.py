@@ -12,6 +12,14 @@ from typing import Union
 from aquiles.wrapper.basewrapper import BaseWrapper
 from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex, allow_metadata
 
+def _escape_for_redis_tag(val: str) -> str:
+    s = str(val)
+    s = s.replace("\\", "\\\\")
+    for ch in ['|', ',', '{', '}', '(', ')', '[', ']', '<', '>', '"', "'"]:
+        s = s.replace(ch, "\\" + ch)
+    s = s.replace(" ", "\\ ")
+    return s
+
 def _format_tag_value(value):
     if value is None:
         return "__unknown__"
@@ -19,10 +27,11 @@ def _format_tag_value(value):
         vals = [str(v).strip() for v in value if v is not None and str(v).strip() != ""]
         if not vals:
             return "__unknown__"
-        escaped = [_escape_tag(v) for v in vals]
+        escaped = [_escape_for_redis_tag(v) for v in vals]
         return "|".join(escaped)
     s = str(value).strip()
-    return _escape_tag(s) if s != "" else "__unknown__"
+    return _escape_for_redis_tag(s) if s != "" else "__unknown__"
+
 
 def _build_metadata_filter(metadata: dict) -> str:
     if not metadata:
@@ -32,23 +41,23 @@ def _build_metadata_filter(metadata: dict) -> str:
         if key not in allow_metadata:
             continue
         if val is None:
-            parts.append(f"(@{key}:{{__unknown__}})")
+            parts.append(f"@{key}:{{__unknown__}}")
             continue
 
         if isinstance(val, dict) and ("min" in val or "max" in val):
             minv = val.get("min", "-inf")
             maxv = val.get("max", "+inf")
-            parts.append(f"(@{key}:[{minv} {maxv}])")
+            parts.append(f"@{key}:[{minv} {maxv}]")
             continue
 
         if isinstance(val, (list, tuple, set)):
-            joined = _format_tag_value(val) 
-            parts.append(f"(@{key}:{{{joined}}})")
+            joined = _format_tag_value(val)
+            parts.append(f"@{key}:{{{joined}}}")
         else:
             escaped = _format_tag_value(val)
-            parts.append(f"(@{key}:{{{escaped}}})")
+            parts.append(f"@{key}:{{{escaped}}}")
 
-    return "".join(parts)
+    return " ".join(parts)
 
 
 class RdsWr(BaseWrapper):
@@ -137,10 +146,11 @@ class RdsWr(BaseWrapper):
         if getattr(q, "metadata", None):
             meta_filter = _build_metadata_filter(q.metadata)
             if meta_filter:
-                filters.append(meta_filter)
+                filters.append(meta_filter.strip())
 
         if filters:
-            filter_prefix = "".join(filters)
+            combined_filters = " ".join(filters)
+            filter_prefix = f"({combined_filters})"
         else:
             filter_prefix = "(*)"
 
