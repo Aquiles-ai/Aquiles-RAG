@@ -1,5 +1,5 @@
 import httpx
-from typing import List, Literal, Callable, Sequence, Awaitable, Union
+from typing import List, Literal, Callable, Sequence, Awaitable, Union, Dict, Any
 from aquiles.utils import chunk_text_by_words
 import asyncio
 import inspect

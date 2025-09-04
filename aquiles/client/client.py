@@ -1,5 +1,5 @@
 import requests as r
-from typing import List, Literal, Callable, Sequence
+from typing import List, Literal, Callable, Sequence, Dict, Any
 from aquiles.utils import chunk_text_by_words
 
 EmbeddingFunc = Callable[[str], Sequence[float]]
@@ -59,7 +59,8 @@ class AquilesRAG:
             dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
             top_k: int = 5,
             cosine_distance_threshold: float = 0.6,
-            embedding_model: str | None = None) -> List[dict]:
+            embedding_model: str | None = None,
+            metadata: Dict[str, Any] | None = None) -> List[dict]:
             """
             Query the vector index for nearest neighbors based on cosine similarity.
 
@@ -92,6 +93,26 @@ class AquilesRAG:
                     "cosine_distance_threshold": cosine_distance_threshold,
                     "embedding_model": embedding_model
                 }
+
+            elif metadata:
+                body ={
+                    "index" : index,
+                    "embeddings": embedding,
+                    "dtype": dtype,
+                    "top_k": top_k,
+                    "cosine_distance_threshold": cosine_distance_threshold,
+                    "metadata": metadata
+                }
+            elif metadata and embedding_model:
+                body ={
+                    "index" : index,
+                    "embeddings": embedding,
+                    "dtype": dtype,
+                    "top_k": top_k,
+                    "cosine_distance_threshold": cosine_distance_threshold,
+                    "embedding_model": embedding_model,
+                    "metadata": metadata
+                }
             else:
                 body ={
                     "index" : index,
@@ -117,7 +138,8 @@ class AquilesRAG:
                 name_chunk: str,
                 raw_text: str,
                 dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32",
-                embedding_model: str | None = None) -> List[dict]:
+                embedding_model: str | None = None,
+                metadata: Dict[str, Any] | None = None) -> List[dict]:
                 """
                 Split text into chunks, compute embeddings, and store them in the index.
 
@@ -158,6 +180,28 @@ class AquilesRAG:
                             "raw_text": chunk,
                             "embeddings": emb,
                             "embedding_model": embedding_model
+                        }
+
+                    elif metadata:
+                        payload = {
+                            "index": index,
+                            "name_chunk": f"{name_chunk}_{idx}",
+                            "dtype": dtype,
+                            "chunk_size": 1024,
+                            "raw_text": chunk,
+                            "embeddings": emb,
+                            "metadata": metadata
+                        }
+                    elif metadata and embedding_model:
+                        payload = {
+                            "index": index,
+                            "name_chunk": f"{name_chunk}_{idx}",
+                            "dtype": dtype,
+                            "chunk_size": 1024,
+                            "raw_text": chunk,
+                            "embeddings": emb,
+                            "embedding_model": embedding_model,
+                            "metadata": metadata
                         }
                     else:
                         payload = {

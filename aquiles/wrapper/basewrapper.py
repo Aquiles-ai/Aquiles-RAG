@@ -4,7 +4,7 @@ class BaseWrapper:
     """
     Base class for future Wrappers to handle operations in RAG
     """
-    def __init__(self, client):
+    def __init__(self, client) -> None:
         self.client = client
 
     async def create_index(self, q: CreateIndex):
@@ -13,7 +13,7 @@ class BaseWrapper:
     async def create_index_multimodal(self):
         raise NotImplementedError("Index creation is not yet available in BaseWrapper.")
 
-    async def send(self, q: SendRAG):
+    async def send(self, q: SendRAG)  :
         raise NotImplementedError("Sending data to RAG in BaseWrapper is not yet available.")
 
     async def send_multimodal(self):
