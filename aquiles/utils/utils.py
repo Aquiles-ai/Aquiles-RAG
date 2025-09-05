@@ -15,6 +15,7 @@ from rich.rule import Rule
 from aquiles.configs import InitConfigsQdrant, InitConfigsRedis, InitConfigsPostgreSQL, AllowedUser, init_aquiles_config_v2, AQUILES_CONFIG
 from getpass import getpass
 from pathlib import Path
+import onnxruntime as ort
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -111,6 +112,9 @@ def _escape_tag(val: str) -> str:
         .replace("-", "\\-")    
         .replace(":", "\\:")     
     )
+
+def get_system_providers() -> List[str]:
+    return ort.get_available_providers()
 
 console = Console()
 
