@@ -126,9 +126,13 @@ class EditsConfigsPostgreSQL(BaseModel):
     allows_api_keys: List[str] | None = Field(default=None)
     allows_users: List[AllowedUser] | None = Field(default=None)
 
-# model
 
 class RerankerInput(BaseModel):
     rerankerjson: List[tuple]
 
 allow_metadata = {"author", "language", "topics", "source", "created_at", "extra"}
+
+providers = Literal["CPUExecutionProvider", 
+            "CUDAExecutionProvider", "ROCMExecutionProvider", 
+            "TensorrtExecutionProvider", "DmlExecutionProvider", "OpenVINOExecutionProvider",
+            "CoreMLExecutionProvider"]

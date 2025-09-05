@@ -1,6 +1,6 @@
 import httpx
 from typing import List, Literal, Callable, Sequence, Awaitable, Union, Dict, Any
-from aquiles.utils import chunk_text_by_words
+from aquiles.utils import chunk_text_by_words, _extract_text_from_chunk
 import asyncio
 import inspect
 from httpx import Timeout
@@ -249,5 +249,44 @@ class AsyncAquilesRAG:
         }
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(url, json=body, headers=self.headers)
+            response.raise_for_status()
+            return response.json()
+
+    async def reranker(self, query: str, docs: Union[List[dict], Dict]) -> List[dict]:
+        """
+        API to rerank information obtained from the RAG
+
+        Args
+        ----
+        query (str): original query made to RAG
+        docs: (Union[List[dict], Dict]): Results (Raw) from the query API to the RAG to rerank the results
+        
+        Returns
+        -------
+        List[dict]: Rerank result
+        """
+
+        url = f'{self.base_url}/v1/rerank'
+
+        if isinstance(docs, dict) and "results" in docs:
+            docs_list = docs["results"] or []
+        elif isinstance(docs, list):
+            docs_list = docs
+        else:
+            if isinstance(docs, dict):
+                docs_list = [docs]
+            else:
+                raise ValueError("docs debe ser List[dict] o Dict con key 'results'")
+        
+        rag = []
+        for d in docs_list:
+            text = _extract_text_from_chunk(d)
+            if not text:
+                continue
+            rag.append([query, text])
+        payload = {"rerankerjson" : rag}
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, json=payload, headers=self.headers)
             response.raise_for_status()
             return response.json()

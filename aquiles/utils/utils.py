@@ -2,7 +2,8 @@ from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 from aquiles.configs import load_aquiles_config
 from starlette import status
-from typing import Optional, List
+from typing import Optional, List, Union, Dict
+import ast
 from packaging.version import Version, InvalidVersion
 from importlib.metadata import version as get_installed_version, PackageNotFoundError
 import requests
@@ -142,6 +143,25 @@ def _display_summary(cfg) -> None:
     console.print(Panel(table, title="Configuration Summary", subtitle_align="right"))
 
 
+def _extract_text_from_chunk(chunk: Union[Dict, str]) -> str:
+    if isinstance(chunk, dict):
+        raw = chunk.get("raw_text") or chunk.get("text") or chunk.get("content") or ""
+    else:
+        raw = str(chunk)
+
+    if isinstance(raw, str) and raw.strip().startswith("["):
+        try:
+            parsed = ast.literal_eval(raw)
+            if isinstance(parsed, (list, tuple)):
+                raw = "\n".join(str(x) for x in parsed)
+            else:
+                raw = str(parsed)
+        except Exception:
+            pass
+
+    return raw
+
+
 def create_config_cli(checkout: bool = True) -> None:
     """
     Interactive Rich CLI to create an Aquiles configuration for Redis, Qdrant or PostgreSQL.
@@ -269,6 +289,7 @@ def create_config_cli(checkout: bool = True) -> None:
 
         cfg = InitConfigsPostgreSQL(
             type_c="PostgreSQL",
+            local=local,
             host=host,
             port=port,
             user=user or None,

@@ -1,1 +1,1 @@
-from .utils import verify_api_key, chunk_text_by_words, checkout, _escape_tag, create_config_cli
+from .utils import verify_api_key, chunk_text_by_words, checkout, _escape_tag, create_config_cli, _extract_text_from_chunk

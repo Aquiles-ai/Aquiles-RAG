@@ -1,6 +1,6 @@
 import requests as r
-from typing import List, Literal, Callable, Sequence, Dict, Any
-from aquiles.utils import chunk_text_by_words
+from typing import List, Literal, Callable, Sequence, Dict, Any, Union
+from aquiles.utils import chunk_text_by_words, _extract_text_from_chunk
 
 EmbeddingFunc = Callable[[str], Sequence[float]]
 
@@ -239,6 +239,48 @@ class AquilesRAG:
                 resp = r.post(url=url, json=body, headers=self.header)
             else:
                 resp = r.post(url=url, json=body)
+            resp.raise_for_status()
+            return resp.json()
+        except r.RequestException as e:
+                raise RuntimeError(f"Error: {e}")
+
+    def reranker(self, query: str, docs: Union[List[dict], Dict]) -> List[dict]:
+        """
+        API to rerank information obtained from the RAG
+
+        Args
+        ----
+        query (str): original query made to RAG
+        docs: (Union[List[dict], Dict]): Results (Raw) from the query API to the RAG to rerank the results
+        
+        Returns
+        -------
+        List[dict]: Rerank result
+        """
+        url = f'{self.base_url}/v1/rerank'
+
+        if isinstance(docs, dict) and "results" in docs:
+            docs_list = docs["results"] or []
+        elif isinstance(docs, list):
+            docs_list = docs
+        else:
+            if isinstance(docs, dict):
+                docs_list = [docs]
+            else:
+                raise ValueError("docs debe ser List[dict] o Dict con key 'results'")
+
+        rag = []
+        for d in docs_list:
+            text = _extract_text_from_chunk(d)
+            if not text:
+                continue
+            rag.append([query, text])
+        payload = {"rerankerjson" : rag}
+        try:
+            if self.api_key:
+                resp = r.post(url=url, json=payload, headers=self.header)
+            else:
+                resp = r.post(url=url, json=payload)
             resp.raise_for_status()
             return resp.json()
         except r.RequestException as e:
