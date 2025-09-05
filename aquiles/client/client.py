@@ -62,25 +62,40 @@ class AquilesRAG:
             embedding_model: str | None = None,
             metadata: Dict[str, Any] | None = None) -> List[dict]:
             """
-            Query the vector index for nearest neighbors based on cosine similarity.
+            Query the vector index for nearest neighbors using cosine similarity.
+
+            Metadata note
+            -------------
+            The optional `metadata` parameter filters results to chunks that share the
+            provided metadata. Only the following metadata keys are accepted:
+
+                ALLOW_METADATA = {
+                    "author",       # str: document author (e.g. "Xiaolu Zhang")
+                    "language",     # str: language code (e.g. "EN", "es"), prefer ISO 639-1
+                    "topics",       # list[str]: list of topic tags (e.g. ["Diffusion", "LLM"])
+                    "source",       # str: origin of the content (e.g. "arxiv")
+                    "created_at",   # str: ISO 8601 datetime recommended (e.g. "2024-08-31T12:34:56+00:00")
+                    "extra"         # dict: arbitrary additional metadata
+                }
+
+            - Keys not in ALLOW_METADATA may be ignored or cause rejection by the backend.
+            - `topics` should be a list of strings.
+            - `created_at` is recommended in ISO 8601 to enable date filtering/sorting.
+            - `extra` may contain arbitrary key/value pairs.
 
             Args
             ----
             index (str): Name of the index to search.
-
             embedding (Sequence[float]): Query embedding vector.
-
-            dtype (str): Data type of the index (must match index creation).
-
+            dtype (str): Numeric dtype of the index (must match index creation).
             top_k (int): Number of top matches to return.
-
-            cosine_distance_threshold (float): Maximum cosine distance for valid matches.
-
-            embedding_model(str | None, optional): Optional filter to restrict results to embeddings created by a specific model (helps match embeddings produced by different models).
+            cosine_distance_threshold (float): Max cosine distance for matches.
+            embedding_model (str | None, optional): Optional filter for the embedding model.
+            metadata (Dict[str, Any] | None, optional): Metadata filter (see above).
 
             Returns
             -------
-            List[dict]: Ordered list of match results with scores and metadata.
+            List[dict]: Ordered list of results with scores and metadata.
             """
 
             url = f'{self.base_url}/rag/query-rag'
@@ -118,28 +133,54 @@ class AquilesRAG:
                 embedding_model: str | None = None,
                 metadata: Dict[str, Any] | None = None) -> List[dict]:
                 """
-                Split text into chunks, compute embeddings, and store them in the index.
+                Split raw_text into chunks, compute embeddings using the provided function,
+                and store the chunks in the RAG index.
 
-                Args
-                ----
-                embedding_func (Callable[[str], Sequence[float]]): Function that takes a text chunk and returns its embedding vector.
+                Metadata note
+                -------------
+                Each chunk may be annotated with `metadata`. Only the following keys are allowed:
 
-                index (str): Name of the index to store documents.
+                    ALLOW_METADATA = {
+                        "author", "language", "topics", "source", "created_at", "extra"
+                    }
 
-                base_name (str): Prefix for chunk identifiers (e.g., document name).
+                Recommended types and examples:
+                    - author: str
+                    - language: str (ISO 639-1 preferred)
+                    - topics: list[str], e.g. ["Diffusion", "LLM"]
+                    - source: str, e.g. "arxiv"
+                    - created_at: str in ISO 8601 or a datetime instance; ISO 8601 is recommended.
+                    - extra: dict with arbitrary key/value pairs
 
-                raw_text (str): Full text to be indexed.
+                Example:
+                    metadata = {
+                        "author": "Xiaolu Zhang",
+                        "language": "EN",
+                        "topics": list({"Diffusion", "LLM", "LLaDA"}),
+                        "source": "arxiv",
+                        "created_at": "2024-08-31T12:34:56+00:00",
+                        "extra": {"doi": "10.1234/abcd"}
+                    }
 
-                dtype (str): Data type of the index.
+            Behavior:
+                - The provided metadata will be attached to every chunk produced for `name_chunk`.
+                - Backends that strictly validate metadata may reject keys not in ALLOW_METADATA.
+                - Keep types consistent to ensure reliable filtering.
 
-                chunk_size (int): Maximum number of words per chunk.
-                
-                embedding_model(str | None, optional): Embedding model used to compute vectors. Recommend providing this so retrieval can filter/weight by model provenance.
+            Args
+            ----
+            embedding_func (Callable[[str], Sequence[float]]): Function that takes a text chunk and returns its embedding vector.
+            index (str): Index name to persist embeddings.
+            name_chunk (str): Base name/prefix for generated chunks (e.g., document filename).
+            raw_text (str): Full text to split into chunks and embed.
+            dtype (str): Numeric dtype for the index.
+            embedding_model (str | None, optional): Embedding model identifier (recommended).
+            metadata (Dict[str, Any] | None, optional): Metadata to associate with each chunk.
 
-                Returns
-                -------
-                List[dict]: Server responses for each chunk upload.
-                """
+            Returns
+            -------
+            List[dict]: Server responses or error dicts for each uploaded chunk.
+            """
                 url = f'{self.base_url}/rag/create'
 
                 chunks = chunk_text_by_words(raw_text)
