@@ -198,6 +198,64 @@ def create_config_cli(checkout: bool = True) -> None:
         default="1",
     )
 
+    # Helper function for reranker configuration
+    def _configure_reranker():
+        """Configure reranker settings common to all database types"""
+        rerank = Confirm.ask("Enable reranker functionality?", default=False)
+        
+        if not rerank:
+            return {
+                'rerank': False,
+                'provider_re': None,
+                'reranker_model': None,
+                'max_concurrent_request': None,
+                'reranker_preload': None
+            }
+        
+        console.print("\n[bold yellow]Reranker Configuration:[/bold yellow]")
+        
+        provider_choices = {
+            "1": "CPUExecutionProvider",
+            "2": "CUDAExecutionProvider", 
+            "3": "ROCMExecutionProvider",
+            "4": "TensorrtExecutionProvider",
+            "5": "DmlExecutionProvider",
+            "6": "OpenVINOExecutionProvider",
+            "7": "CoreMLExecutionProvider"
+        }
+        
+        console.print("Available providers:")
+        for key, provider in provider_choices.items():
+            console.print(f"  {key}) {provider}")
+        
+        provider_choice = Prompt.ask(
+            "Select execution provider",
+            choices=list(provider_choices.keys()),
+            default="1"
+        )
+        provider_re = provider_choices[provider_choice]
+        
+        reranker_model = Prompt.ask(
+            "Reranker model name (leave empty for default)",
+            default=""
+        ) or None
+        
+        max_concurrent_str = Prompt.ask(
+            "Maximum concurrent requests (leave empty for default)",
+            default=""
+        )
+        max_concurrent_request = int(max_concurrent_str) if max_concurrent_str else None
+        
+        reranker_preload = Confirm.ask("Preload reranker model into memory?", default=False)
+        
+        return {
+            'rerank': rerank,
+            'provider_re': provider_re,
+            'reranker_model': reranker_model,
+            'max_concurrent_request': max_concurrent_request,
+            'reranker_preload': reranker_preload
+        }
+
     if choice == "1":
         console.print(":fire: [bold red]Redis selected[/bold red]\n")
         local = Confirm.ask("Is Redis running locally?", default=True)
@@ -222,6 +280,8 @@ def create_config_cli(checkout: bool = True) -> None:
         else:
             allows_users = []
 
+        reranker_config = _configure_reranker()
+
         cfg = InitConfigsRedis(
             local=local,
             host=host,
@@ -235,7 +295,8 @@ def create_config_cli(checkout: bool = True) -> None:
             ssl_ca=ssl_ca,
             allows_api_keys=allows_api_keys,
             allows_users=allows_users or [AllowedUser(username="root", password="root")],
-            initial_cap=400
+            initial_cap=400,
+            **reranker_config
         )
 
     elif choice == "2":
@@ -257,6 +318,8 @@ def create_config_cli(checkout: bool = True) -> None:
         else:
             allows_users = []
 
+        reranker_config = _configure_reranker()
+
         cfg = InitConfigsQdrant(
             local=local,
             host=host,
@@ -267,6 +330,7 @@ def create_config_cli(checkout: bool = True) -> None:
             auth_token_provider=auth_token_provider,
             allows_api_keys=allows_api_keys,
             allows_users=allows_users or [AllowedUser(username="root", password="root")],
+            **reranker_config
         )
 
     else:
@@ -291,6 +355,8 @@ def create_config_cli(checkout: bool = True) -> None:
         else:
             allows_users = []
 
+        reranker_config = _configure_reranker()
+
         cfg = InitConfigsPostgreSQL(
             type_c="PostgreSQL",
             local=local,
@@ -305,6 +371,7 @@ def create_config_cli(checkout: bool = True) -> None:
             timeout=timeout,
             allows_api_keys=allows_api_keys,
             allows_users=allows_users or [AllowedUser(username="root", password="root")],
+            **reranker_config
         )
 
     console.print(Rule())

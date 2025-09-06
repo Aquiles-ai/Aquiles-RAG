@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Literal
 from platformdirs import user_data_dir
 import json
 from pydantic import BaseModel, Field
@@ -35,6 +35,11 @@ class InitConfigsRedis(BaseModel):
         description="Users allowed to access the mini-UI and docs"
     )
     initial_cap: int = Field(400)
+    rerank: bool = Field(False, description="If rerank were activated")
+    provider_re: Literal["CPUExecutionProvider", "CUDAExecutionProvider", "ROCMExecutionProvider", "TensorrtExecutionProvider", "DmlExecutionProvider", "OpenVINOExecutionProvider", "CoreMLExecutionProvider"] | None = Field(None, description="Provider Options in FastEmbed")
+    reranker_model: str | None = Field(None, description="Model that the reranker will make")
+    max_concurrent_request: int | None = Field(None, description="Maximum number of concurrent requests")
+    reranker_preload: bool | None = Field(None, description="Whether to preload the model into memory")
 
 class InitConfigsQdrant(BaseModel):
     type_c: str = "Qdrant"
@@ -50,6 +55,11 @@ class InitConfigsQdrant(BaseModel):
     allows_users: List[AllowedUser] = Field( default_factory=lambda: [AllowedUser(username="root", password="root")],
         description="Users allowed to access the mini-UI and docs"
     )
+    rerank: bool = Field(False, description="If rerank were activated")
+    provider_re: Literal["CPUExecutionProvider", "CUDAExecutionProvider", "ROCMExecutionProvider", "TensorrtExecutionProvider", "DmlExecutionProvider", "OpenVINOExecutionProvider", "CoreMLExecutionProvider"] | None = Field(None, description="Provider Options in FastEmbed")
+    reranker_model: str | None = Field(None, description="Model that the reranker will make")
+    max_concurrent_request: int | None = Field(None, description="Maximum number of concurrent requests")
+    reranker_preload: bool | None = Field(None, description="Whether to preload the model into memory")
 
 class InitConfigsPostgreSQL(BaseModel):
     type_c: str = "PostgreSQL"
@@ -67,6 +77,11 @@ class InitConfigsPostgreSQL(BaseModel):
     allows_users: List[AllowedUser] = Field( default_factory=lambda: [AllowedUser(username="root", password="root")],
         description="Users allowed to access the mini-UI and docs"
     )
+    rerank: bool = Field(False, description="If rerank were activated")
+    provider_re: Literal["CPUExecutionProvider", "CUDAExecutionProvider", "ROCMExecutionProvider", "TensorrtExecutionProvider", "DmlExecutionProvider", "OpenVINOExecutionProvider", "CoreMLExecutionProvider"] | None = Field(None, description="Provider Options in FastEmbed")
+    reranker_model: str | None = Field(None, description="Model that the reranker will make")
+    max_concurrent_request: int | None = Field(None, description="Maximum number of concurrent requests")
+    reranker_preload: bool | None = Field(None, description="Whether to preload the model into memory")
 
 
 def init_aquiles_config_v2(cfg: Union[InitConfigsRedis, InitConfigsQdrant, InitConfigsPostgreSQL], force: bool = False) -> None:
