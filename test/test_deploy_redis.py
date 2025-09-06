@@ -32,6 +32,11 @@ dp_cfg = DeployConfigRd(
     allows_api_keys=apikeys,
     allows_users=users,
     initial_cap=200,
+    rerank=False,
+    provider_re=None,
+    reranker_model=None,
+    max_concurrent_request=None,
+    reranker_preload=None,
     ALGORITHM="HS256"
 )
 

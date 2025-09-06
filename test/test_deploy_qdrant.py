@@ -37,6 +37,11 @@ dp_cfg = DeployConfigQdrant(local=False,
         api_key=API_KEY_QDRANT,
         allows_api_keys=API_KEYS,
         allows_users=users,
+        rerank=False,
+        provider_re=None,
+        reranker_model=None,
+        max_concurrent_request=None,
+        reranker_preload=None,
         ALGORITHM="HS256")
 
 def run():
