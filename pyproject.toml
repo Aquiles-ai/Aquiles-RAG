@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aquiles-rag"
-version = "0.3.8"
+version = "0.4.0"
 description = "Aquiles-RAG is a high-performance Augmented Recovery-Generation (RAG) solution based on Redis, Qdrant or PostgreSQLRAG. It offers a high-level interface using FastAPI REST APIs."
 readme = "README.md"
 requires-python = ">=3.8"
