@@ -5,8 +5,8 @@
 </div>
 
 <p align="center">
-  <strong>High-performance Retrieval-Augmented Generation (RAG) on Redis or Qdrant</strong><br/>
-  🚀 FastAPI • Redis / Qdrant • Async • Embedding-agnostic
+  <strong>High-performance Retrieval-Augmented Generation (RAG) on Redis, Qdrant or PostgreSQL (pgvector)</strong><br/>
+  🚀 FastAPI • Redis / Qdrant / PostgreSQL • Async • Embedding-agnostic
 </p>
 
 <p align="center">
@@ -15,45 +15,45 @@
 
 ## 📑 Table of Contents
 
-1. [Features](#features)  
-2. [Tech Stack](#tech-stack)  
-3. [Requirements](#requirements)  
-4. [Installation](#installation)  
-5. [Configuration & Connection Options](#configuration--connection-options)  
+1. [Features](#features)
+2. [Tech Stack](#tech-stack)
+3. [Requirements](#requirements)
+4. [Installation](#installation)
+5. [Configuration & Connection Options](#configuration--connection-options)
 6. [Usage](#usage)
    * [CLI](#cli)
    * [REST API](#rest-api)
    * [Python Client](#python-client)
-   * [UI Playground](#ui-playground)  
-7. [Architecture](#architecture)  
+   * [UI Playground](#ui-playground)
+7. [Architecture](#architecture)
 8. [License](#license)
 
 ## ⭐ Features
 
-* 📈 **High Performance**: Vector search powered by Redis HNSW or Qdrant.  
-* 🛠️ **Simple API**: Endpoints for index creation, insertion, and querying.  
-* 🔌 **Embedding-agnostic**: Works with any embedding model (OpenAI, Llama 3, HuggingFace, etc.).  
-* 💻 **Interactive Setup Wizard**: `aquiles-rag configs` walks you through full configuration for Redis or Qdrant.  
-* ⚡ **Sync & Async clients**: `AquilesRAG` (requests) and `AsyncAquilesRAG` (httpx) with `embedding_model` metadata support.  
-* 🧩 **Extensible**: Designed to integrate into ML pipelines, microservices, or serverless deployments.
+* 📈 **High Performance**: Vector search powered by Redis HNSW, Qdrant, or PostgreSQL with pgvector.
+* 🛠️ **Simple API**: Endpoints for index creation, insertion, querying, and optional re-ranking.
+* 🔌 **Embedding-agnostic**: Works with any embedding model (OpenAI, Llama 3, HuggingFace, etc.).
+* 💻 **Interactive Setup Wizard**: `aquiles-rag configs` walks you through full configuration for Redis, Qdrant, or PostgreSQL.
+* ⚡ **Sync & Async clients**: `AquilesRAG` (requests) and `AsyncAquilesRAG` (httpx) with `embedding_model` and `metadata` support.
+* 🧩 **Extensible**: Designed to integrate into ML pipelines, microservices, or serverless deployments; supports an optional re-ranker stage for improved result ordering.
 
 ## 🛠 Tech Stack
 
-* **Python 3.9+**  
-* [FastAPI](https://fastapi.tiangolo.com/)  
-* [Redis](https://redis.io/) or [Qdrant](https://qdrant.tech/) as vector store  
-* [NumPy](https://numpy.org/)  
-* [Pydantic](https://pydantic-docs.helpmanual.io/)  
-* [Jinja2](https://jinja.palletsprojects.com/)  
-* [Click](https://click.palletsprojects.com/) (CLI)  
-* [Requests](https://docs.python-requests.org/) (sync client)  
-* [HTTPX](https://www.python-httpx.org/) (async client)  
+* **Python 3.9+**
+* [FastAPI](https://fastapi.tiangolo.com/)
+* [Redis](https://redis.io/), [Qdrant](https://qdrant.tech/) or **PostgreSQL + pgvector** as vector store
+* [NumPy](https://numpy.org/)
+* [Pydantic](https://pydantic-docs.helpmanual.io/)
+* [Jinja2](https://jinja.palletsprojects.com/)
+* [Click](https://click.palletsprojects.com/) (CLI)
+* [Requests](https://docs.python-requests.org/) (sync client)
+* [HTTPX](https://www.python-httpx.org/) (async client)
 * [Platformdirs](https://github.com/platformdirs/platformdirs) (config management)
 
 ## ⚙️ Requirements
 
-1. **Redis** (standalone or cluster) — *or* **Qdrant** (HTTP / gRPC).  
-2. **Python 3.9+**  
+1. **Redis** (standalone or cluster) — *or* **Qdrant** (HTTP / gRPC) — *or* **PostgreSQL** with the `pgvector` extension.
+2. **Python 3.9+**
 3. **pip**
 
 > **Optional**: run Redis locally with Docker:
@@ -62,14 +62,13 @@
 > docker run -d --name redis-stack -p 6379:6379 redis/redis-stack-server:latest
 > ```
 
-
 ## 🚀 Installation
 
 ### Via PyPI (recommended)
 
 ```bash
 pip install aquiles-rag
-````
+```
 
 ### From Source (optional)
 
@@ -101,7 +100,9 @@ The previous manual per-flag config flow was replaced by an interactive wizard. 
 aquiles-rag configs
 ```
 
-The wizard prompts for everything required for either **Redis** or **Qdrant** (host, ports, TLS/gRPC options, API keys, admin user). At the end it writes `aquiles_config.json` to the standard location.
+The wizard prompts for everything required for either **Redis**, **Qdrant**, or **PostgreSQL** (host, ports, TLS/gRPC options, API keys, admin user). At the end it writes `aquiles_config.json` to the standard location.
+
+> The wizard also includes optional re-ranker configuration (enable/disable, execution provider, model name, concurrency, preload) so you can activate a re-ranking stage that scores `(query, doc)` pairs after the vector store returns candidates.
 
 ### Manual config (advanced / CI)
 
@@ -137,6 +138,8 @@ redis.Redis(host=host, port=port, username=username or None,
 redis.Redis(host=host, port=port, username=username or None, password=password or None, decode_responses=True)
 ```
 
+> If you select **PostgreSQL** in the wizard, the wizard will prompt for connection and pool settings for your Postgres instance. Note: Aquiles-RAG does **not** run DB migrations automatically — if you use Postgres you must prepare the `pgvector` and `pgcrypto` extension, tables and indexes yourself.
+
 ## 📖 Usage
 
 ### CLI
@@ -161,6 +164,9 @@ aquiles-rag deploy --host "0.0.0.0" --port 5500 --workers 2 deploy_redis.py
 
 # Qdrant example
 aquiles-rag deploy --host "0.0.0.0" --port 5500 --workers 2 deploy_qdrant.py
+
+# PostgreSQL example
+aquiles-rag deploy --host "0.0.0.0" --port 5500 --workers 2 deploy_postgres.py
 ```
 
 > The `deploy` command imports the given Python file, executes its `run()` to generate the config (writes `aquiles_config.json`), then starts the FastAPI server.
@@ -211,6 +217,8 @@ curl -X POST http://localhost:5500/rag/query-rag \
     "cosine_distance_threshold": 0.6
   }'
 ```
+
+> The API supports an optional re-ranking stage (configurable in the server). When enabled, the typical flow is: vector search → candidate filtering/metadata match → optional re-ranker scores pairs to improve ordering. (See configuration wizard to enable/disable and set re-ranker options.)
 
 ### Python Client
 
@@ -266,8 +274,8 @@ asyncio.run(main())
 **Notes**
 
 * Both clients accept an optional `embedding_model` parameter forwarded as metadata — helpful when storing/querying embeddings produced by different models.
-* `send_rag` chunks text using `chunk_text_by_words()` (default \~600 words / ≈1024 tokens) and uploads each chunk (concurrently in the async client).
-
+* `send_rag` chunks text using `chunk_text_by_words()` (default ≈600 words / ≈1024 tokens) and uploads each chunk (concurrently in the async client).
+* If the re-ranker is enabled on the server, the client can call the re-rank endpoint after receiving RAG results to re-score/re-order candidates.
 
 ### UI Playground
 
@@ -283,22 +291,21 @@ Use it to:
 * Test `/create/index`, `/rag/create`, `/rag/query-rag`
 * Access protected Swagger UI & ReDoc after logging in
 
-
 ## 🏗 Architecture
 
 ![Architecture](aquiles/static/diagram.png)
 
 1. **Clients** (HTTP/HTTPS, Python SDK, or UI Playground) make asynchronous HTTP requests.
 2. **FastAPI Server** — orchestration and business logic; validates requests and translates them to vector store operations.
-3. **Vector Store** — either Redis (HASH + HNSW/COSINE search) or Qdrant (collections + vector search).
-
+3. **Vector Store** — Redis (HASH + HNSW/COSINE search), Qdrant (collections + vector search), or PostgreSQL with `pgvector` and `pgcrypto` (manual DB preparation required).
+4. **Optional Re-ranker** — when enabled, a re-ranking component scores `(query, doc)` pairs to improve final ordering.
 
 ## ⚠️ Backend differences & notes
 
-* **Metrics / `/status/ram`**: Redis offers `INFO memory` and `memory_stats()` — for Qdrant the same Redis-specific metrics are not available (the endpoint will return a short message explaining this).
-* **Dtype handling**: Server validates `dtype` for Redis (converts embeddings to the requested NumPy dtype). Qdrant accepts float arrays directly — `dtype` is informational/compatibility metadata.
+* **Metrics / `/status/ram`**: Redis offers `INFO memory` and `memory_stats()` — for Qdrant the same Redis-specific metrics are not available (the endpoint will return a short message explaining this). For PostgreSQL, metrics exposed differ from Redis and Qdrant; check your Postgres monitoring tooling for memory and indexing statistics.
+* **Dtype handling**: Server validates `dtype` for Redis (converts embeddings to the requested NumPy dtype). Qdrant accepts float arrays directly — `dtype` is informational/compatibility metadata. For PostgreSQL+pgvector, ensure the stored vector dimension and any normalization required for cosine/inner product are handled by your ingestion pipeline.
 * **gRPC**: Qdrant can be used over HTTP or gRPC (`prefer_grpc=true` in the config). Ensure your environment allows gRPC outbound/inbound as needed.
-
+* **PostgreSQL note**: Aquiles-RAG does **not** run automatic migrations for Postgres — create the `pgvector` extension, tables and indexes manually (or via your own migration tool) before using Postgres as a vector store.
 
 ## 🔎 Test Suite
 
@@ -308,6 +315,7 @@ See the `test/` directory for automated tests:
 * API tests for endpoint behavior
 * `test_deploy.py` for deployment / bootstrap validation
 
+> If you add Postgres to CI, prepare the DB (create `pgvector` extension and required tables/indexes) in your test fixtures since there are no automatic migrations.
 
 ## 📄 License
 
