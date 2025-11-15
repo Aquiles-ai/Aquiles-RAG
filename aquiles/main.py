@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
                     else:
                         con.close()
         except Exception:
-            print("Error cerrando la conexión en shutdown")
+            print("Error closing the connection on shutdown")
 
 app = FastAPI(title="Aquiles-RAG", debug=True, lifespan=lifespan, docs_url=None, redoc_url=None)
 

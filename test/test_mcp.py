@@ -21,7 +21,7 @@ async def main():
         mcp_servers=[mcp_server]
     )
 
-    result = await Runner.run(agent, "What is 4221534.79 + 344500978843.81 ?")
+    result = await Runner.run(agent, "You can see what tools are available, and if there's a tool to check the database connection, check it and tell me what you get.")
     print(result.final_output)
 
     await mcp_server.cleanup()
