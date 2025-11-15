@@ -7,7 +7,7 @@ from agents.mcp import MCPServerSse
 async def main():
     openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    mcp_server = MCPServerSse({"url": "http://127.0.0.1:8000/sse", "headers": {
+    mcp_server = MCPServerSse({"url": "http://127.0.0.1:5500/sse", "headers": {
         "X-API-Key": os.getenv("AQUILES_API_KEY", "dummy-api-key")
     }})
     await mcp_server.connect()

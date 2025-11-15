@@ -68,12 +68,10 @@ def checkout():
     pkg = "aquiles-rag"
     url = f"https://pypi.org/pypi/{pkg}/json"
 
-    # 1) Obtiene la info desde PyPI JSON
     try:
         resp = requests.get(url, timeout=5)
         resp.raise_for_status()
     except requests.RequestException:
-        # Si falla la conexión a PyPI, asumimos que no podemos comprobar
         return True, None
 
     data = resp.json()
@@ -81,19 +79,15 @@ def checkout():
     if not latest:
         return True, None
 
-    # 2) Obtiene la versión local
     try:
         v_local = get_installed_version(pkg)
     except PackageNotFoundError:
-        # No instalado: forzamos sugerencia de instalar la última
         return False, latest
 
-    # 3) Compara semánticamente
     try:
         v_local_parsed  = Version(v_local)
         v_latest_parsed = Version(latest)
     except InvalidVersion:
-        # Alguna versión no parsea: sugerimos actualizar
         return False, latest
 
     if v_local_parsed < v_latest_parsed:
@@ -383,3 +377,13 @@ def create_config_cli(checkout: bool = True) -> None:
                             title="Done", style="green"))
     else:
         console.print(Panel("[yellow]No changes made. Configuration was not saved.[/yellow]", title="Cancelled", style="yellow"))
+
+
+def run_mcp_serve(host, port, transport, click):
+    """Execute the MCP server using fastmcp."""
+    import sys
+    from aquiles.mcp.serve import mcp
+    try:
+        mcp.run(host=host, port=port, transport=transport)
+    except KeyboardInterrupt:
+        click.echo("\nShutting down MCP server...")

@@ -36,5 +36,5 @@ async def sum_numbers(a: float, b: float, ctx: Context) -> dict:
         "authenticated_with": api_key if api_key else "no-auth"
     }
 
-if __name__ == "__main__":
-    mcp.run()
+#if __name__ == "__main__":
+#    mcp.run()

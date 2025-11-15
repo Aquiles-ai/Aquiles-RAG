@@ -26,7 +26,7 @@ def save_configs():
 @click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
 @click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
 def serve(host, port):
-    """Inicia el servidor FastAPI de Aquiles-RAG."""
+    """Start the Aquiles-RAG FastAPI server."""
     try:
         import uvicorn
         from aquiles.main import app
@@ -79,6 +79,25 @@ def deploy_command(host, port, config, workers):
 
     subprocess.run(cmd, check=True)
 
+@cli.command("mcp-serve")
+@click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
+@click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
+@click.option("--transport", default="sse", help="Transport protocol")
+def mcp_serve(host, port, transport):
+    """Start the Aquiles-RAG MCP server."""
+    try:
+        from aquiles.utils import run_mcp_serve
+        create_config_cli()
+        run_mcp_serve(host, port, transport, click)
+    finally:
+        up_to_date, latest = checkout()
+        if not up_to_date and latest:
+            click.secho(
+                f"🚀 A new version is available: aquiles-rag=={latest}\n"
+                f"Update with:\n"
+                f"   pip install aquiles-rag=={latest}",
+                fg="yellow",
+            )
 
 if __name__ == "__main__":
     cli()
