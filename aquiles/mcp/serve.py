@@ -7,6 +7,9 @@ from aquiles.wrapper import RdsWr, QdrantWr, PostgreSQLRAG
 from aquiles.mcp.midd import APIKeyMiddleware
 import inspect
 from contextlib import asynccontextmanager
+from aquiles.models import CreateIndex
+from typing import Dict, Any, Union, Literal
+import traceback
 
 class AppState:
     def __init__(self):
@@ -169,6 +172,151 @@ async def readiness(ctx: Context) -> dict:
         "status": "unknown connection type",
         "connection_type": type_co
     }
+
+@mcp.tool()
+async def create_index(indexname: str, embeddings_dim : int, dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"], delete_the_index_if_it_exists: bool, concurrently: bool, ctx: Context):
+    """
+    Create a new vector search index in the configured backend
+    (Redis, Qdrant or PostgreSQL).
+
+    Parameters
+    ----------
+    indexname : str
+        Name of the index to create.
+
+    embeddings_dim_text : int
+        Dimension of the text embeddings.
+        Default = 768.
+
+    dtype : {"FLOAT32", "FLOAT64", "FLOAT16"}
+        Embedding data type.
+        FLOAT32 → default
+        FLOAT64 → high precision, high memory
+        FLOAT16 → low precision, low memory
+
+    delete_the_index_if_it_exists : bool
+        If true, drops the existing index before creating a new one.
+
+    concurrently : bool | None
+        PostgreSQL-only option.
+        If true, performs concurrent index creation.
+        If None → backend default is used.
+
+    Notes
+    -----
+    - Redis: returns schema fields along with index info.
+
+    Returns
+    -------
+    dict
+        A dictionary describing success, index name, and in Redis also the
+        generated schema.
+    """
+
+    state = ctx.request_context.lifespan_context
+    type_co = state.aquiles_config.get("type_co", state.aquiles_config.get("type_c", "Redis"))
+    r = state.con
+
+    q = CreateIndex(indexname=indexname, embeddings_dim=embeddings_dim, dtype=dtype, delete_the_index_if_it_exists=delete_the_index_if_it_exists, concurrently=concurrently)
+
+    if type_co == "Redis":
+        if not hasattr(r, "ft"):
+            return {
+                "status": "Invalid or uninitialized Redis connection.",
+                "connection_type": "Redis",
+            }
+
+        clientRd = RdsWr(r)
+
+        schema = await RedsSch(q)
+        try:
+            await clientRd.create_index(q, schema=schema)
+        except Exception as e:
+            print(e)
+            return {
+                "status": "Redis was unable to create the index",
+                "connection_type": "Redis",
+                "error": str(e)
+            }
+
+        return {
+            "status": "success",
+            "index": indexname,
+            "fields": [f.name for f in schema]
+        }
+
+    elif type_co == "Qdrant":
+        clientQdr = QdrantWr(r)
+
+        try:
+            await clientQdr.create_index(q)
+        except Exception as e:
+            traceback.print_exc()
+            print("Qdrant was unable to create the index", repr(e))
+            return {
+                "status": "Qdrant was unable to create the index",
+                "connection_type": "Qdrant",
+                "error": str(e)
+            }
+
+        return {
+            "status": "success",
+            "index": q.indexname}
+
+    elif type_co == "PostgreSQL":
+        clientPg = PostgreSQLRAG(r)
+
+        try:
+            await clientPg.create_index(q)
+        except Exception as e:
+            traceback.print_exc()
+            print("PostgreSQL was unable to create the index:", repr(e))
+            return {
+                "status": "PostgreSQL was unable to create the index",
+                "connection_type": "PostgreSQL",
+                "error": str(e)
+            }
+
+        return {
+            "status": "success",
+            "index": q.indexname} 
+
+@mcp.tool
+async def get_ind(ctx: Context):
+    """
+    It retrieves the created indexes
+
+    Returns
+    -------
+    dict
+        A dictionary that describes all the indexes created
+    """
+
+    state = ctx.request_context.lifespan_context
+    type_co = state.aquiles_config.get("type_co", state.aquiles_config.get("type_c", "Redis"))
+    r = state.con
+
+    if type_co == "Redis":
+        clientRd = RdsWr(r)
+
+        indices = await clientRd.get_ind()
+
+        return {"indices": indices}
+
+    elif type_co == "Qdrant":
+        clientQdr = QdrantWr(r)
+
+        indices = await clientQdr.get_ind()
+
+        return {"indices": indices}
+
+
+    elif type_co == "PostgreSQL":
+        clientPg = PostgreSQLRAG(r)
+
+        indices = await clientPg.get_ind()
+
+        return {"indices": indices}
 
 
 #if __name__ == "__main__":

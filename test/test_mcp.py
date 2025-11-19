@@ -21,7 +21,11 @@ async def main():
         mcp_servers=[mcp_server]
     )
 
-    result = await Runner.run(agent, "You can see what tools are available, and if there's a tool to check the database connection, check it and tell me what you get.")
+    prompt = """You can see what tools are available and, if there's one to check the connection to 
+    the vector database, try it. If it's successful, try creating an index with a 
+    random name and then (if successful) retrieve all the created indexes, and tell me what result you get."""
+
+    result = await Runner.run(agent, prompt)
     print(result.final_output)
 
     await mcp_server.cleanup()
