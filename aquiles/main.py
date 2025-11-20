@@ -227,8 +227,6 @@ async def query_rag(q: QueryRAG, request: Request):
     r = request.app.state.con
     
     if type_co == "Redis":
-
-
         if q.dtype == "FLOAT32":
             dtype = np.float32
         elif q.dtype == "FLOAT16":

@@ -7,9 +7,14 @@ from aquiles.wrapper import RdsWr, QdrantWr, PostgreSQLRAG
 from aquiles.mcp.midd import APIKeyMiddleware
 import inspect
 from contextlib import asynccontextmanager
-from aquiles.models import CreateIndex
-from typing import Dict, Any, Union, Literal
+from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
+from typing import Dict, Any, Union, Literal, List
 import traceback
+from pydantic import PositiveInt
+import numpy as np
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.exceptions import HTTPException
 
 class AppState:
     def __init__(self):
@@ -88,33 +93,301 @@ async def lifespan(server: FastMCP) -> AsyncIterator[AppState]:
 mcp = FastMCP("Aquiles-RAG MCP Server", lifespan=lifespan)
 mcp.add_middleware(APIKeyMiddleware())
 
-"""
-I know it's basic, but I just want to validate that the AI ​​calls the tools and the authentication works.
-"""
+@mcp.custom_route("/rag/create", methods=["POST"])
+async def send_rag(request: Request) -> JSONResponse:
+    try:
+        body = await request.json()
+        q = SendRAG(**body)
+    except Exception as e:
+        print(f"X Error parsing request: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid request body: {str(e)}"
+        )
 
-@mcp.tool()
-async def sum_numbers(a: float, b: float, ctx: Context) -> dict:
-    """
-    Add two numbers together.
-    
-    Args:
-        a: First number
-        b: Second number
-    
-    Returns:
-        Dictionary with the result and operation details
-    """
-    result = a + b
-    api_key = ctx.get_state("api_key")
-    
-    return {
-        "operation": "sum",
-        "a": a,
-        "b": b,
-        "result": result,
-        "message": f"{a} + {b} = {result}",
-        "authenticated_with": api_key if api_key else "no-auth"
-    }
+    con = await get_connectionAll()
+    aquiles_config = await load_aquiles_config()
+    type_co = aquiles_config.get("type_c", "Redis")
+    r = con
+
+    try:
+        if type_co == "Redis":
+            dtype_map = {
+                "FLOAT32": np.float32,
+                "FLOAT16": np.float16,
+                "FLOAT64": np.float64
+            }
+            
+            dtype = dtype_map.get(q.dtype)
+            if dtype is None:
+                print(f"X dtype not supported: {q.dtype}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"dtype '{q.dtype}' not supported. Use: FLOAT32, FLOAT16, or FLOAT64"
+                )
+
+            try:
+                emb_array = np.array(q.embeddings, dtype=dtype)
+                emb_bytes = emb_array.tobytes()
+                
+                clientRd = RdsWr(r)
+                key = await clientRd.send(q, emb_bytes)
+                
+                return JSONResponse({
+                    "status": "ok",
+                    "key": key,
+                    "type": "Redis"
+                })
+                
+            except Exception as e:
+                print(f"X Error saving chunk to Redis: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save to Redis: {str(e)}"
+                )
+
+        elif type_co == "Qdrant":
+            try:
+                clientQdr = QdrantWr(r)
+                key = await clientQdr.send(q)
+                
+                return JSONResponse({
+                    "status": "ok",
+                    "key": key,
+                    "type": "Qdrant"
+                })
+                
+            except Exception as e:
+                print(f"X Error saving chunk to Qdrant: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save to Qdrant: {str(e)}"
+                )
+
+        elif type_co == "PostgreSQL":
+            try:
+                clientPg = PostgreSQLRAG(r)
+                key = await clientPg.send(q)
+                
+                return JSONResponse({
+                    "status": "ok",
+                    "key": key,
+                    "type": "PostgreSQL"
+                })
+                
+            except Exception as e:
+                print(f"X Error saving chunk to PostgreSQL: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save to PostgreSQL: {str(e)}"
+                )
+        
+        else:
+            print(f"X Unknown storage type: {type_co}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unknown storage type: {type_co}"
+            )
+
+    finally:
+        try:
+            if type_co == "Redis":
+                if hasattr(con, "aclose"):
+                    if inspect.iscoroutinefunction(con.aclose):
+                        await con.aclose()
+                    else:
+                        con.aclose()
+                elif hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+            elif str(type_co) in ("PostgreSQL", "postgresql", "pg", "postgresql+asyncpg"):
+                if hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+            else:
+                if hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+        except Exception as e:
+            print(f"X Error closing the connection on shutdown: {e}")
+
+@mcp.custom_route("/create/index", methods=["POST"])
+async def create_index_api(request: Request) -> JSONResponse:
+    try:
+        body = await request.json()
+        q = CreateIndex(**body)
+    except Exception as e:
+        print(f"X Error parsing request: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid request body: {str(e)}"
+        )
+
+    con = await get_connectionAll()
+    aquiles_config = await load_aquiles_config()
+    type_co = aquiles_config.get("type_c", "Redis")
+    r = con
+
+    try:
+        if type_co == "Redis":
+            if not hasattr(r, "ft"):
+                raise HTTPException(status_code=500, detail="Invalid or uninitialized Redis connection.")
+
+            clientRd = RdsWr(r)
+
+            schema = await RedsSch(q)
+            try:
+                await clientRd.create_index(q, schema=schema)
+            except Exception as e:
+                print(f"X Error: {e}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error creating index: {e}"
+                )
+
+            return JSONResponse({
+                "status": "success",
+                "index": q.indexname,
+                "fields": [f.name for f in schema]
+            })
+
+        elif type_co == "Qdrant":
+            clientQdr = QdrantWr(r)
+
+            try:
+                await clientQdr.create_index(q)
+            except Exception as e:
+                traceback.print_exc()
+                print(f"X Error detallado creating index: {repr(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error creating index: {e}"
+                )
+
+            return JSONResponse({
+                "status": "success",
+                "index": q.indexname
+            })
+
+        elif type_co == "PostgreSQL":
+            clientPg = PostgreSQLRAG(r)
+
+            try:
+                await clientPg.create_index(q)
+            except Exception as e:
+                traceback.print_exc()
+                print(f"X Error detallado creating index: {repr(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error creating index: {e}"
+                )
+
+            return JSONResponse({
+                "status": "success",
+                "index": q.indexname
+            })
+        
+        else:
+            print(f"X Unknown storage type: {type_co}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unknown storage type: {type_co}"
+            )
+
+    finally:
+        try:
+            if type_co == "Redis":
+                if hasattr(con, "aclose"):
+                    if inspect.iscoroutinefunction(con.aclose):
+                        await con.aclose()
+                    else:
+                        con.aclose()
+                elif hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+            elif str(type_co) in ("PostgreSQL", "postgresql", "pg", "postgresql+asyncpg"):
+                if hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+            else:
+                if hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+        except Exception as e:
+            print(f"X Error closing the connection on shutdown: {e}")
+
+
+@mcp.custom_route("/rag/query-rag", methods=["POST"])
+async def query_api(request: Request) -> JSONResponse:
+    try:
+        body = await request.json()
+        q = QueryRAG(**body)
+    except Exception as e:
+        print(f"X Error parsing request: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid request body: {str(e)}"
+        )
+
+    con = await get_connectionAll()
+    aquiles_config = await load_aquiles_config()
+    type_co = aquiles_config.get("type_c", "Redis")
+    r = con
+    try:
+        if type_co == "Redis":
+            if q.dtype == "FLOAT32":
+                dtypev = np.float32
+            elif q.dtype == "FLOAT16":
+                dtypev = np.float16
+            elif q.dtype == "FLOAT64":
+                dtypev = np.float64
+            else:
+                raise HTTPException(status_code=500, detail="dtype not supported")
+
+            emb_array = np.array(q.embeddings, dtype=dtypev)
+            emb_bytes = emb_array.tobytes()
+
+            clientRd = RdsWr(r)
+
+            results = await clientRd.query(q, emb_bytes)
+
+            return JSONResponse({"status": "ok", "total": len(results), "results": results})
+
+        elif type_co == "Qdrant":
+            clientQdr = QdrantWr(r)
+
+            results = await clientQdr.query(q, q.embeddings)
+
+            return JSONResponse({"status": "ok", "total": len(results), "results": results})
+
+        elif type_co == "PostgreSQL":
+            clientPg = PostgreSQLRAG(r)
+
+            results = await clientPg.query(q, q.embeddings)
+
+            return JSONResponse({"status": "ok", "total": len(results), "results": results})
+
+    finally:
+        try:
+            if type_co == "Redis":
+                if hasattr(con, "aclose"):
+                    if inspect.iscoroutinefunction(con.aclose):
+                        await con.aclose()
+                    else:
+                        con.aclose()
+                elif hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+            elif str(type_co) in ("PostgreSQL", "postgresql", "pg", "postgresql+asyncpg"):
+                if hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+            else:
+                if hasattr(con, "close"):
+                    if inspect.iscoroutinefunction(con.close):
+                        await con.close()
+        except Exception as e:
+            print(f"X Error closing the connection on shutdown: {e}")
 
 @mcp.tool()
 async def readiness(ctx: Context) -> dict:
@@ -128,6 +401,8 @@ async def readiness(ctx: Context) -> dict:
     
     type_co = state.aquiles_config.get("type_co", state.aquiles_config.get("type_c", "Redis"))
     r = state.con
+
+    print("Executing readiness()")
 
     if type_co == "Redis":
         try:
@@ -219,6 +494,8 @@ async def create_index(indexname: str, embeddings_dim : int, dtype: Literal["FLO
 
     q = CreateIndex(indexname=indexname, embeddings_dim=embeddings_dim, dtype=dtype, delete_the_index_if_it_exists=delete_the_index_if_it_exists, concurrently=concurrently)
 
+    print("Executing create_index()")
+
     if type_co == "Redis":
         if not hasattr(r, "ft"):
             return {
@@ -281,7 +558,7 @@ async def create_index(indexname: str, embeddings_dim : int, dtype: Literal["FLO
             "status": "success",
             "index": q.indexname} 
 
-@mcp.tool
+@mcp.tool()
 async def get_ind(ctx: Context):
     """
     It retrieves the created indexes
@@ -296,10 +573,13 @@ async def get_ind(ctx: Context):
     type_co = state.aquiles_config.get("type_co", state.aquiles_config.get("type_c", "Redis"))
     r = state.con
 
+    print("Executing get_ind()")
+
     if type_co == "Redis":
         clientRd = RdsWr(r)
 
         indices = await clientRd.get_ind()
+        print(indices)
 
         return {"indices": indices}
 
@@ -317,6 +597,158 @@ async def get_ind(ctx: Context):
         indices = await clientPg.get_ind()
 
         return {"indices": indices}
+
+@mcp.tool()
+async def delete_index(index_name: str, delete_docs: bool, ctx: Context):
+    """
+    Remove an index
+
+    Parameters
+    ----------
+    indexname : str
+        Name of the index to delete.
+
+    delete_docs : bool
+        Remove documents from the index
+
+    Returns
+    -------
+    dict
+        A dictionary describing the deleted index
+    """
+    state = ctx.request_context.lifespan_context
+    type_co = state.aquiles_config.get("type_co", state.aquiles_config.get("type_c", "Redis"))
+    r = state.con
+    q = DropIndex(index_name=index_name, delete_docs=delete_docs)
+
+    print("Executing delete_index()")
+
+    if type_co == "Redis":
+        clientRd = RdsWr(r)
+
+        result = await clientRd.drop_index(q)
+
+        return result
+
+    elif type_co == "Qdrant":
+        clientQdr = QdrantWr(r)
+
+        result = await clientQdr.drop_index(q)
+
+        return result
+
+
+    elif type_co == "PostgreSQL":
+        clientPg = PostgreSQLRAG(r)
+
+        result = await clientPg.drop_index(q)
+
+        return result
+
+@mcp.tool()
+async def query_rag(index: str, embeddings: List[float], dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"], top_k: int, cosine_distance_threshold: float | None, ctx: Context):
+    """
+    Query the RAG system to find similar text chunks based on embedding similarity.
+    
+    This tool performs a semantic search in the specified index, returning the 
+    most similar chunks to the provided query embeddings. It supports multiple 
+    storage backends (Redis, Qdrant, or PostgreSQL) and uses cosine similarity 
+    for relevance ranking.
+
+    Parameters
+    ----------
+    index : str
+        Name of the index to search in.
+    
+    embeddings : List[float]
+        Query vector embeddings to search for similar chunks.
+        Should have the same dimensionality as the indexed embeddings.
+    
+    dtype : Literal["FLOAT32", "FLOAT64", "FLOAT16"]
+        Data type for the embeddings. Options: FLOAT32, FLOAT64, or FLOAT16.
+        Must match the dtype used when indexing the chunks.
+    
+    top_k : int
+        Number of most similar results to return. Default is 5.
+    
+    cosine_distance_threshold : float | None
+        Maximum cosine distance (0–2) to accept for results (optional).
+        Lower values mean stricter similarity requirements.
+        If None, no threshold filtering is applied.
+    
+    
+    ctx : Context
+        MCP context object providing access to the request context and 
+        system configuration.
+
+    Returns
+    -------
+    dict
+        Dictionary with the query results:
+        - "status" : str
+            Operation status ("ok" if successful).
+        - "total" : int
+            Number of results returned.
+        - "results" : list
+            List of matching chunks, ordered by similarity (most similar first).
+            Each result contains the chunk data and similarity score.
+        - "connection_type" : str (only on Redis error)
+            Type of connection used.
+
+    Notes
+    -----
+    - The storage backend is determined by the configuration in 
+      `aquiles_config["type_co"]` (Redis, Qdrant, or PostgreSQL).
+    - For Redis, embeddings are converted to a NumPy array with the 
+      specified dtype before querying.
+    - Results are ranked by cosine similarity, with lower distances 
+      indicating higher similarity.
+    - If cosine_distance_threshold is specified, only results within 
+      that threshold will be returned.
+    """
+    state = ctx.request_context.lifespan_context
+    type_co = state.aquiles_config.get("type_co", state.aquiles_config.get("type_c", "Redis"))
+    r = state.con
+    q = QueryRAG(index=index, embeddings=embeddings, dtype=dtype, top_k=top_k, cosine_distance_threshold=cosine_distance_threshold, embedding_model=None, metadata=None)
+
+    print("Executing query_rag()")
+
+
+    if type_co == "Redis":
+        if q.dtype == "FLOAT32":
+            dtypev = np.float32
+        elif q.dtype == "FLOAT16":
+            dtypev = np.float16
+        elif q.dtype == "FLOAT64":
+            dtypev = np.float64
+        else:
+            return {
+                "status": "dtype not supported",
+                "connection_type": "Redis",
+            }
+
+        emb_array = np.array(q.embeddings, dtype=dtypev)
+        emb_bytes = emb_array.tobytes()
+
+        clientRd = RdsWr(r)
+
+        results = await clientRd.query(q, emb_bytes)
+
+        return {"status": "ok", "total": len(results), "results": results}
+
+    elif type_co == "Qdrant":
+        clientQdr = QdrantWr(r)
+
+        results = await clientQdr.query(q, q.embeddings)
+
+        return {"status": "ok", "total": len(results), "results": results}
+
+    elif type_co == "PostgreSQL":
+        clientPg = PostgreSQLRAG(r)
+
+        results = await clientPg.query(q, q.embeddings)
+
+        return {"status": "ok", "total": len(results), "results": results}
 
 
 #if __name__ == "__main__":

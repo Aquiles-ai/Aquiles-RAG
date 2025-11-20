@@ -3,7 +3,7 @@ from typing import List, Literal, Optional, Any, Dict
 from aquiles.configs import AllowedUser
 
 class SendRAG(BaseModel):
-    index: str = Field(..., description="Index name in Redis")
+    index: str = Field(..., description="Index name in RAG")
     name_chunk: str = Field(..., description="Human-readable chunk label or name")
     dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = Field(
         "FLOAT32",
