@@ -1,7 +1,7 @@
 <h1 align="center">Aquiles-RAG</h1>
 
 <div align="center">
-  <img src="aquiles/static/aq-rag2.png" alt="Aquiles-RAG Logo" width="200"/>
+  <img width="2560" height="1200" alt="Aquiles-RAG" src="https://res.cloudinary.com/dmtomxyvm/image/upload/v1763680389/aquiles_rag_idhjga.png"/>
 </div>
 
 <p align="center">
