@@ -79,6 +79,42 @@ def deploy_command(host, port, config, workers):
 
     subprocess.run(cmd, check=True)
 
+@cli.command("deploy-mcp")
+@click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG-MCP will be executed")
+@click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG-MCP will be executed")
+@click.argument("config", type=click.Path(exists=True))
+def deploy_command_mcp(host, port, config):
+    up_to_date, latest = checkout()
+    if not up_to_date and latest:
+        click.secho(
+            f"🚀 A new version is available: aquiles-rag=={latest}\n"
+            f"  Update with:\n"
+            f"    pip install aquiles-rag=={latest}",
+            fg="yellow",
+        )
+    
+    import subprocess
+
+    module_name = os.path.splitext(os.path.basename(config))[0]
+    spec = importlib.util.spec_from_file_location(module_name, config)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    if hasattr(module, "run"):
+        module.run()
+    else:
+        click.echo("The file does not have a 'run()' function")
+
+    cmd = [
+        "uvicorn",
+        "aquiles.mcp.serve:mcp",   
+        "--host", str(host),
+        "--port", str(port),
+        "--workers", str(1)
+    ]
+
+    subprocess.run(cmd, check=True)
+
 @cli.command("mcp-serve")
 @click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
 @click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG will be executed")
