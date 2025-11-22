@@ -20,7 +20,7 @@ async def get_emb(text: str):
     return resp.data[0].embedding
 
 async def send_info(index: str, name_chunk: str, raw_text: str, dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"]):
-    client = AsyncAquilesRAG(api_key=os.getenv("AQUILES_API_KEY", "dummy-api-key"))
+    client = AsyncAquilesRAG(host="https://aquiles-deploy.onrender.com",api_key=os.getenv("AQUILES_API_KEY", "dummy-api-key")) # MCP server can now be deployed in Render
 
     result = await client.send_rag(get_emb, index, name_chunk, raw_text, dtype)
 
@@ -28,14 +28,14 @@ async def send_info(index: str, name_chunk: str, raw_text: str, dtype: Literal["
 
 async def query(index: str, text: str, dtype: Literal["FLOAT32", "FLOAT64", "FLOAT16"] = "FLOAT32", 
                 top_k: int = 5, cosine_distance_threshold: float = 0.6,):
-    client = AsyncAquilesRAG(api_key=os.getenv("AQUILES_API_KEY", "dummy-api-key"))
+    client = AsyncAquilesRAG(host="https://aquiles-deploy.onrender.com", api_key=os.getenv("AQUILES_API_KEY", "dummy-api-key")) # MCP server can now be deployed in Render
     embedding = await get_emb(text)
     result = await client.query(index=index, embedding=embedding, dtype=dtype, top_k=top_k, cosine_distance_threshold=cosine_distance_threshold)
     return result
 
 async def main():
 
-    mcp_server = MCPServerSse({"url": "http://127.0.0.1:5500/sse", "headers": {
+    mcp_server = MCPServerSse({"url": "https://aquiles-deploy.onrender.com/sse", "headers": { # MCP server can now be deployed in Render
         "X-API-Key": os.getenv("AQUILES_API_KEY", "dummy-api-key")
     }})
     await mcp_server.connect()

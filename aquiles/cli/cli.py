@@ -93,7 +93,6 @@ def deploy_command_mcp(host, port, config):
             fg="yellow",
         )
     
-    import subprocess
 
     module_name = os.path.splitext(os.path.basename(config))[0]
     spec = importlib.util.spec_from_file_location(module_name, config)
@@ -105,15 +104,19 @@ def deploy_command_mcp(host, port, config):
     else:
         click.echo("The file does not have a 'run()' function")
 
-    cmd = [
-        "uvicorn",
-        "aquiles.mcp.serve:mcp",   
-        "--host", str(host),
-        "--port", str(port),
-        "--workers", str(1)
-    ]
-
-    subprocess.run(cmd, check=True)
+    try:
+        from aquiles.utils import run_mcp_serve
+        run_mcp_serve(host, port, "sse", click)
+    finally:
+        up_to_date, latest = checkout()
+        if not up_to_date and latest:
+            click.secho(
+                f"🚀 A new version is available: aquiles-rag=={latest}\n"
+                f"Update with:\n"
+                f"   pip install aquiles-rag=={latest}",
+                fg="yellow",
+            )
+    
 
 @cli.command("mcp-serve")
 @click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG will be executed")
