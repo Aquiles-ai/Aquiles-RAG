@@ -186,7 +186,7 @@ docker-compose ps
 
 ## ⚠️ Troubleshooting
 
-### X Error: Cannot connect to Redis
+### Error: Cannot connect to Redis
 
 ```bash
 # Verify Redis is running
@@ -199,14 +199,14 @@ docker-compose logs redis
 docker-compose exec aquiles-api ping redis
 ```
 
-### X Error: Port already in use
+### Error: Port already in use
 
 ```bash
 # Change port in docker-compose.yml or use variable
 PORT=5502 docker-compose up -d
 ```
 
-### X Error: Environment variables not loading
+### Error: Environment variables not loading
 
 ```bash
 # Make sure .env exists
