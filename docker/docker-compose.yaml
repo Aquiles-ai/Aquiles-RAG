@@ -1,0 +1,56 @@
+version: '3.8'
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: redis-aquiles
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - aquiles-network
+  aquiles-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
+    container_name: aquiles-api
+    ports:
+      - "5500:5500"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=default
+      - REDIS_PASS=
+      - HOST=0.0.0.0
+      - PORT=5500
+      - WORKERS=2
+    depends_on:
+      - redis
+    networks:
+      - aquiles-network
+    restart: unless-stopped
+
+  aquiles-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: aquiles-mcp
+    ports:
+      - "5501:5500"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=default
+      - REDIS_PASS=
+      - HOST=0.0.0.0
+      - PORT=5500
+    depends_on:
+      - redis
+    networks:
+      - aquiles-network
+    restart: unless-stopped
+volumes:
+  redis_data:
+networks:
+  aquiles-network:
+    driver: bridge
