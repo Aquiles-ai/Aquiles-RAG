@@ -186,6 +186,7 @@ docker-compose ps
 
 ## ⚠️ Troubleshooting
 
+
 ### Error: Cannot connect to Redis
 
 ```bash
