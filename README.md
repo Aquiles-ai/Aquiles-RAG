@@ -146,7 +146,6 @@ aquiles-rag deploy --host "0.0.0.0" --port 5500 --workers 2 deploy_qdrant.py
 aquiles-rag deploy --host "0.0.0.0" --port 5500 --workers 2 deploy_postgres.py
 
 # MCP Example (Deployment is only compatible with the SSE transport)
-
 aquiles-rag deploy-mcp --host "0.0.0.0" --port 5500 deploy_mcp_postgres.py
 ```
 
