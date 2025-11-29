@@ -8,9 +8,8 @@ from aquiles.mcp.midd import APIKeyMiddleware
 import inspect
 from contextlib import asynccontextmanager
 from aquiles.models import CreateIndex, SendRAG, QueryRAG, DropIndex
-from typing import Dict, Any, Union, Literal, List
+from typing import Literal
 import traceback
-from pydantic import PositiveInt
 import numpy as np
 from starlette.requests import Request
 from starlette.responses import JSONResponse
