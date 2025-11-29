@@ -251,6 +251,83 @@ async def main():
 asyncio.run(main())
 ```
 
+### TypeScript/JavaScript Client
+
+#### Installation
+
+```bash
+npm i @aquiles-ai/aquiles-rag-client
+```
+
+#### Usage
+
+```typescript
+import { AsyncAquilesRAG, ChunkMetadata } from '@aquiles-ai/aquiles-rag-client';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+async function getEmbedding(text: string): Promise<number[]> {
+  if (!text) return [];
+
+  const resp = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: text,
+    encoding_format: "float",
+  });
+
+  const emb = (resp as any)?.data?.[0]?.embedding;
+  if (!Array.isArray(emb)) throw new Error("Invalid embedding");
+
+  return emb.map(Number);
+}
+
+const client = new AsyncAquilesRAG({
+  host: 'http://127.0.0.1:5500',
+  apiKey: 'your-api-key',
+});
+
+async function main() {
+  // Create index with correct dimensions for text-embedding-3-small
+  await client.createIndex('my_index', 1536, 'FLOAT32', true);
+
+  // Metadata
+  const metadata: ChunkMetadata = {
+    author: 'John Doe',
+    language: 'EN',
+    topics: ['AI', 'Machine Learning'],
+    source: 'documentation',
+    created_at: new Date().toISOString(),
+  };
+
+  // Ingest document
+  const text = 'Your long document text here...';
+  await client.sendRAG(
+    getEmbedding,
+    'my_index',
+    'document_1',
+    text,
+    {
+      embeddingModel: 'text-embedding-3-small',
+      metadata
+    }
+  );
+
+  // Query
+  const queryEmbedding = await getEmbedding('What is this about?');
+  const results = await client.query('my_index', queryEmbedding, {
+    topK: 5,
+    cosineDistanceThreshold: 0.6
+  });
+
+  console.log('Results:', results);
+}
+
+main();
+```
+
 **Notes**
 
 * Both clients accept an optional `embedding_model` parameter forwarded as metadata — helpful when storing/querying embeddings produced by different models.
