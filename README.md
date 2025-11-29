@@ -26,6 +26,7 @@
    * [CLI](#cli)
    * [REST API](#rest-api)
    * [Python Client](#python-client)
+   * [TypeScript/JavaScript Client](#yypeScript/javaScript-client)
    * [UI Playground](#ui-playground)
 7. [Architecture](#architecture)
 8. [License](#license)
