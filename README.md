@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/aquiles-rag/"><img src="https://img.shields.io/pypi/v/aquiles-rag.svg" alt="PyPI Version"></a>
-  <a href="https://aquiles-ai.github.io/aqRAG-docs/">📖 Documentation</a>
+  <a href="https://aquiles-ai.github.io/aqRAG-docs/"></a><img src="https://img.shields.io/badge/Docs-Read%20the%20Docs-brightgreen.svg"></a>
   <a href="https://pypi.org/project/aquiles-rag/"><img src="https://img.shields.io/pypi/dm/aquiles-rag" alt="PyPI Downloads"></a>
 </p>
 
