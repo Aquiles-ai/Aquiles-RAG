@@ -7,6 +7,9 @@ class BaseWrapper:
     def __init__(self, client) -> None:
         self.client = client
 
+    def create_tenant(self):
+        raise NotImplementedError("Tenant creation is not yet available in BaseWrapper.")
+
     async def create_index(self, q: CreateIndex):
         raise NotImplementedError("Index creation is not yet available in BaseWrapper.")
 
