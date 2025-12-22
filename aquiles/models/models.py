@@ -130,4 +130,15 @@ class EditsConfigsPostgreSQL(BaseModel):
 class RerankerInput(BaseModel):
     rerankerjson: List[tuple]
 
+class Tenant(BaseModel):
+    name: str
+    max_index: int
+    rate_limit: int
+    allows_api_keys: Optional[List[str]] = Field( None, description="New list of allowed API keys (replaces the previous one)")
+
+class RegisterTenant(BaseModel):
+    tenant_name: str
+    api_key: str
+    request_amount: int
+
 allow_metadata = {"author", "language", "topics", "source", "created_at", "extra"}
