@@ -82,8 +82,9 @@ def deploy_command(host, port, config, workers):
 @cli.command("deploy-mcp")
 @click.option("--host", default="0.0.0.0", help="Host where Aquiles-RAG-MCP will be executed")
 @click.option("--port", type=int, default=5500, help="Port where Aquiles-RAG-MCP will be executed")
+@click.option("--transport", default="sse", help="Transport protocol")
 @click.argument("config", type=click.Path(exists=True))
-def deploy_command_mcp(host, port, config):
+def deploy_command_mcp(host, port, transport, config):
     up_to_date, latest = checkout()
     if not up_to_date and latest:
         click.secho(
@@ -106,7 +107,7 @@ def deploy_command_mcp(host, port, config):
 
     try:
         from aquiles.utils import run_mcp_serve
-        run_mcp_serve(host, port, "sse", click)
+        run_mcp_serve(host, port, transport, click)
     finally:
         up_to_date, latest = checkout()
         if not up_to_date and latest:
