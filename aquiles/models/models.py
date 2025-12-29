@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, PositiveInt
 from typing import List, Literal, Optional, Any, Dict
 from aquiles.configs import AllowedUser
+from enum import Enum
 
 class SendRAG(BaseModel):
     index: str = Field(..., description="Index name in RAG")
@@ -126,19 +127,55 @@ class EditsConfigsPostgreSQL(BaseModel):
     allows_api_keys: List[str] | None = Field(default=None)
     allows_users: List[AllowedUser] | None = Field(default=None)
 
+class ApiKeyLevel(str, Enum):
+    DEFAULT = "default"  # create_index, read, write
+    ADMIN = "admin"      # default + delete_index
+
+class RateLimit(BaseModel):
+    requests_per_day: int = Field(10000, ge=0, description="Total requests per day")
+    
+    # Optional
+    creates_per_day: Optional[int] = Field(None, ge=0, description="Index creation per day (optional)")
+    deletes_per_day: Optional[int] = Field(None, ge=0, description="Deletion of indexes per day (optional)")
+
+class ApiKeyConfig(BaseModel):
+    level: ApiKeyLevel = Field(ApiKeyLevel.DEFAULT, description="Permission level")
+    rate_limit: Optional[RateLimit] = Field(None, description="Rate limits (optional)")
+    enabled: bool = Field(True, description="If the API Key is active")
+    description: str = Field("", description="Optional description")
+
+class ApiKeysRegistry(BaseModel):
+    configs: Dict[str, ApiKeyConfig] = Field(
+        default_factory=dict,
+        description="Configuration per API key"
+    )
+    
+    def get_config(self, api_key: str) -> Optional[ApiKeyConfig]:
+        return self.configs.get(api_key)
+    
+    def has_permission(self, api_key: str, operation: str) -> bool:
+
+        config = self.get_config(api_key)
+        
+        # No config = full permissions (backwards compatibility)
+        if config is None:
+            return True
+        
+        # Key disabled
+        if not config.enabled:
+            return False
+        
+        # ADMIN can do everything
+        if config.level == ApiKeyLevel.ADMIN:
+            return True
+        
+        # DEFAULT cannot delete
+        if config.level == ApiKeyLevel.DEFAULT:
+            return operation != "delete_index"
+        
+        return False
 
 class RerankerInput(BaseModel):
     rerankerjson: List[tuple]
-
-class Tenant(BaseModel):
-    name: str
-    max_index: int
-    rate_limit: int
-    allows_api_keys: Optional[List[str]] = Field( None, description="New list of allowed API keys (replaces the previous one)")
-
-class RegisterTenant(BaseModel):
-    tenant_name: str
-    api_key: str
-    request_amount: int
 
 allow_metadata = {"author", "language", "topics", "source", "created_at", "extra"}
