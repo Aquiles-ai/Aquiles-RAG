@@ -169,7 +169,6 @@ def create_config_cli(checkout: bool = True) -> None:
     """
     config_path = Path(AQUILES_CONFIG)
 
-    # respect checkout: if the file already exists, do not launch CLI
     if checkout and config_path.exists():
         console.print(
             Panel(
@@ -250,6 +249,60 @@ def create_config_cli(checkout: bool = True) -> None:
             'reranker_preload': reranker_preload
         }
 
+    def _configure_api_keys_limits(api_keys: List[str]) -> Optional[Dict[str, Dict]]:
+        if not api_keys:
+            return None
+        
+        console.print("\n[bold cyan]API Keys Rate Limiting & Permissions (Optional)[/bold cyan]")
+        configure_limits = Confirm.ask(
+            "Configure rate limits and permissions for your API keys?",
+            default=False
+        )
+        
+        if not configure_limits:
+            return None
+        
+        api_keys_config = {}
+        
+        for api_key in api_keys:
+            console.print(f"\n[bold yellow]Configuring: {api_key}[/bold yellow]")
+
+            level_choice = Prompt.ask(
+                "Permission level  (1) default (create, read, write)  (2) admin (all operations)",
+                choices=["1", "2"],
+                default="1"
+            )
+            level = "default" if level_choice == "1" else "admin"
+
+            configure_rate = Confirm.ask("Configure rate limiting?", default=True)
+            
+            rate_limit = None
+            if configure_rate:
+                requests_per_day = int(Prompt.ask(
+                    "Requests per day",
+                    default="10000" if level == "admin" else "1000"
+                ))
+                rate_limit = {"requests_per_day": requests_per_day}
+
+            description = Prompt.ask("Description (optional)", default="")
+
+            enabled = Confirm.ask("Enabled?", default=True)
+
+            key_config = {
+                "level": level,
+                "enabled": enabled
+            }
+            
+            if rate_limit:
+                key_config["rate_limit"] = rate_limit
+            
+            if description:
+                key_config["description"] = description
+            
+            api_keys_config[api_key] = key_config
+        
+        return api_keys_config if api_keys_config else None
+
     if choice == "1":
         console.print(":fire: [bold red]Redis selected[/bold red]\n")
         local = Confirm.ask("Is Redis running locally?", default=True)
@@ -275,6 +328,9 @@ def create_config_cli(checkout: bool = True) -> None:
             allows_users = []
 
         reranker_config = _configure_reranker()
+        
+        # ✨ NEW: Configure API keys limits
+        api_keys_config = _configure_api_keys_limits(allows_api_keys)
 
         cfg = InitConfigsRedis(
             local=local,
@@ -290,6 +346,7 @@ def create_config_cli(checkout: bool = True) -> None:
             allows_api_keys=allows_api_keys,
             allows_users=allows_users or [AllowedUser(username="root", password="root")],
             initial_cap=400,
+            api_keys_config=api_keys_config,
             **reranker_config
         )
 
@@ -314,6 +371,8 @@ def create_config_cli(checkout: bool = True) -> None:
 
         reranker_config = _configure_reranker()
 
+        api_keys_config = _configure_api_keys_limits(allows_api_keys)
+
         cfg = InitConfigsQdrant(
             local=local,
             host=host,
@@ -324,6 +383,7 @@ def create_config_cli(checkout: bool = True) -> None:
             auth_token_provider=auth_token_provider,
             allows_api_keys=allows_api_keys,
             allows_users=allows_users or [AllowedUser(username="root", password="root")],
+            api_keys_config=api_keys_config,
             **reranker_config
         )
 
@@ -350,6 +410,9 @@ def create_config_cli(checkout: bool = True) -> None:
             allows_users = []
 
         reranker_config = _configure_reranker()
+        
+        # ✨ NEW: Configure API keys limits
+        api_keys_config = _configure_api_keys_limits(allows_api_keys)
 
         cfg = InitConfigsPostgreSQL(
             type_c="PostgreSQL",
@@ -365,6 +428,7 @@ def create_config_cli(checkout: bool = True) -> None:
             timeout=timeout,
             allows_api_keys=allows_api_keys,
             allows_users=allows_users or [AllowedUser(username="root", password="root")],
+            api_keys_config=api_keys_config,
             **reranker_config
         )
 

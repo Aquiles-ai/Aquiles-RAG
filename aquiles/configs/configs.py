@@ -40,6 +40,11 @@ class InitConfigsRedis(BaseModel):
     reranker_model: str | None = Field(None, description="Model that the reranker will make")
     max_concurrent_request: int | None = Field(None, description="Maximum number of concurrent requests")
     reranker_preload: bool | None = Field(None, description="Whether to preload the model into memory")
+    api_keys_config: Optional[Dict[str, Dict[str, Any]]] = Field(
+        None,
+        description="Optional configuration for API keys with rate limits and permission levels. "
+                    "Format: {'api_key': {'level': 'default'|'admin', 'rate_limit': {...}, 'enabled': bool, 'description': str}}"
+    )
 
 class InitConfigsQdrant(BaseModel):
     type_c: str = "Qdrant"
@@ -60,6 +65,11 @@ class InitConfigsQdrant(BaseModel):
     reranker_model: str | None = Field(None, description="Model that the reranker will make")
     max_concurrent_request: int | None = Field(None, description="Maximum number of concurrent requests")
     reranker_preload: bool | None = Field(None, description="Whether to preload the model into memory")
+    api_keys_config: Optional[Dict[str, Dict[str, Any]]] = Field(
+        None,
+        description="Optional configuration for API keys with rate limits and permission levels. "
+                    "Format: {'api_key': {'level': 'default'|'admin', 'rate_limit': {...}, 'enabled': bool, 'description': str}}"
+    )
 
 class InitConfigsPostgreSQL(BaseModel):
     type_c: str = "PostgreSQL"
@@ -82,6 +92,11 @@ class InitConfigsPostgreSQL(BaseModel):
     reranker_model: str | None = Field(None, description="Model that the reranker will make")
     max_concurrent_request: int | None = Field(None, description="Maximum number of concurrent requests")
     reranker_preload: bool | None = Field(None, description="Whether to preload the model into memory")
+    api_keys_config: Optional[Dict[str, Dict[str, Any]]] = Field(
+        None,
+        description="Optional configuration for API keys with rate limits and permission levels. "
+                    "Format: {'api_key': {'level': 'default'|'admin', 'rate_limit': {...}, 'enabled': bool, 'description': str}}"
+    )
 
 
 def init_aquiles_config_v2(cfg: Union[InitConfigsRedis, InitConfigsQdrant, InitConfigsPostgreSQL], force: bool = False) -> None:

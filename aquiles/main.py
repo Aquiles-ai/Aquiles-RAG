@@ -13,7 +13,7 @@ from aquiles.connection import get_connectionAll
 from aquiles.schemas import RedsSch
 from aquiles.wrapper import RdsWr, QdrantWr, PostgreSQLRAG
 from aquiles.models import QueryRAG, SendRAG, CreateIndex, DropIndex, EditsConfigsReds, EditsConfigsQdrant, EditsConfigsPostgreSQL
-from aquiles.utils import verify_api_key
+from aquiles.auth.middleware import verify_api_key, require_operation
 from aquiles.auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 from aquiles.rerank import api
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_401_UNAUTHORIZED
@@ -260,7 +260,7 @@ async def query_rag(q: QueryRAG, request: Request):
         return {"status": "ok", "total": len(results), "results": results}
 
 
-@app.post("/rag/drop_index", dependencies=[Depends(verify_api_key)], tags=["RAG APIs"])
+@app.post("/rag/drop_index", dependencies=[Depends(require_operation("delete_index"))], tags=["RAG APIs"])
 async def drop_index(q: DropIndex, request: Request):
 
     conf = getattr(request.app.state, "aquiles_config", {}) or {}
